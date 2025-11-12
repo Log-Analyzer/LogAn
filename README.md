@@ -34,19 +34,19 @@ uv run python -m http.server 8000 --directory "${OUTPUT_DIR}/"
 
 ### Option 2 - Container
 
-`docker.sh` contains wrapper for building and running the LogAn as container.
+`container.sh` contains wrapper for building and running the LogAn as container.
 
 ### Build Container Image
 
 ```
-bash docker.sh build
+bash container.sh build
 ```
 
 ### Running Container Image
 
-1. Execute `docker.sh` as follows: 
+1. Execute `container.sh` as follows: 
     ```bash
-    bash docker.sh run OUTPUT_DIR LOG_FILE_PATH TIME_RANGE(OPTIONAL) -ProcessLogFiles(OPTIONAL) -ProcessTxtFiles(OPTIONAL) -DebugMode(OPTIONAL) 
+    bash container.sh run OUTPUT_DIR LOG_FILE_PATH TIME_RANGE(OPTIONAL) -ProcessLogFiles(OPTIONAL) -ProcessTxtFiles(OPTIONAL) -DebugMode(OPTIONAL) 
     ```
    - OUTPUT_DIR - The directory where the tool's reports are stored
    - LOG_FILE_PATH - Folders/files separated by colon(:). 
@@ -57,7 +57,7 @@ bash docker.sh build
 
    Example:
    ```bash
-       bash docker.sh run ./tmp/output ./examples/Linux_2k.log all-data
+       bash container.sh run ./tmp/output ./examples/Linux_2k.log all-data
    ```
    In the above example: 
    - `./examples/Linux_2k.log` - File
@@ -121,15 +121,19 @@ bash docker.sh build
 
 This project was originally developed by **IBM Research** and is actively supported and maintained by **Red Hat**.
 
-### Original Development Team (IBM Research)
+### IBM Research
 - Karan Bhukar
 - Pranjal Gupta
 - Harshit Kumar
 
-### Maintainers & Contributors (Red Hat)
+### Red Hat
+
 - Pradeep Surisetty
+- Pravin Satpute
 - Rahul Shetty
+- Jan Hutar
+- Nikhil Jain
 
-We welcome contributions from the community! Please see our contribution guidelines for more information.
 
+We welcome contributions from the community!
 
