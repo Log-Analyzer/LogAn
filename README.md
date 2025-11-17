@@ -124,9 +124,9 @@ uv run python run_log_diagnosis.py --input_files "./examples/Linux_2k.log" --out
 
 ## How to View the Reports (Output)
 ```bash
-uv run python -m http.server 8000 --directory "${OUTPUT_DIR}/log_diagnosis"
+uv run python -m http.server 8000 --directory "${OUTPUT_DIR}"
 
-# server should be available at http://localhost:8000/
+# server should be available at http://localhost:8000/log_diagnosis
 ``` 
 
 ## Authors & Contributors
