@@ -20,7 +20,7 @@ It generates two reports:
 
 ## How to Run
 
-### Option 1 - Using Containers
+### Option 1 - Using Containers (Recommended)
 
 `container.sh` contains wrapper for building and running the LogAn as container.
 

@@ -11,7 +11,7 @@ pandas==2.2.2
 patool==1.15.0
 python-dotenv==1.0.1
 python_dateutil==2.8.2
-pyjnius==1.5.0
+pyjnius==1.6.1
 pytz==2023.3.post1
 redis==5.0.1
 requests==2.31.0
