@@ -44,14 +44,10 @@ else
 fi
 
 # Function to send statistics after pipeline stages.
-# This function takes a success flag as an argument and sends telemetry data to a server.
 # Example: send_stats true
 function send_stats() {
     success=$1  # Capture the success flag.
     echo "{\"success\": $success}" > "${OUTPUT_DIR}/metrics/run.json" 2>&1
-    cd ./telemetry
-    python3 stats.py --dir "${OUTPUT_DIR}/metrics" --stage $PIPELINE_STAGE > "${OUTPUT_DIR}/run/stats.log" 2>&1
-    echo "Sent statistics!" >> "${OUTPUT_DIR}/run/status.log" 2>&1
 }
 
 # Function to handle the exit status of the last command.

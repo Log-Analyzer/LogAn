@@ -201,12 +201,13 @@ def get_summary_html_str(df_for_summary_html, include_golden_signal_dropdown, ig
     df_for_summary_html['text'] = df_for_summary_html['text'].apply(replace_tags)
     
     # Create a Jinja environment to render the summary HTML template.
-    env = Environment(loader=FileSystemLoader('./log_diagnosis/templates'))
+    path = os.path.dirname(os.path.abspath(__file__))
+    env = Environment(loader=FileSystemLoader(os.path.join(path, 'templates')))
     html_template = env.get_template('summary_golden_signal_error.html')
 
     # Render the summary HTML template.
     rendered_template = html_template.render(
-        summary_table=df_for_summary_html.values.tolist(), 
+        summary_table=df_for_summary_html.values.tolist(),
         include_golden_signal_dropdown=include_golden_signal_dropdown,
         ignored_file_list=ignored_file_list,
         processed_file_list=processed_file_list,
