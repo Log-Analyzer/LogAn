@@ -907,21 +907,24 @@ class Preprocessing:
 
         max_readable = datetime.utcfromtimestamp(max_epoch).strftime('%Y-%m-%d %H:%M:%S')
 
-        # Calculate mean and standard deviation of token counts
         mean = df['token_count'].mean()
         std_dev = df['token_count'].std()
 
-        # Calculate Z-scores and apply truncation
-        df['z_score'] = (df['token_count'] - mean) / std_dev
-        z_threshold = self.z_threshold
-        upper_bound = int(mean + z_threshold * std_dev)
+        if np.isnan(std_dev) or std_dev == 0:
+            # No variability -> No need for z-score truncation
+            df['z_score'] = 0
+            df['truncated_token_count'] = df['token_count']
+            df['truncated_log'] = df['text']
+        else:
+            z_threshold = self.z_threshold
+            upper_bound = int(mean + z_threshold * std_dev)
 
-        print(f"mean: {mean}    std_dev: {std_dev}  upper_bound: {upper_bound}")
+            df['z_score'] = (df['token_count'] - mean) / std_dev
+            df['truncated_token_count'] = np.where(df['z_score'] > z_threshold, upper_bound, df['token_count'])
+            df['truncated_log'] = df.parallel_apply(
+                lambda row: row['text'][:upper_bound] if row['token_count'] > upper_bound else row['text'], axis=1
+            )
 
-        df['truncated_token_count'] = np.where(df['z_score'] > z_threshold, upper_bound, df['token_count'])
-        df['truncated_log'] = df.parallel_apply(
-            lambda row: row['text'][:upper_bound] if row['token_count'] > upper_bound else row['text'], axis=1
-        )
 
         # # Plot histograms of original and truncated token counts
         # plt.figure(figsize=(14, 7))
