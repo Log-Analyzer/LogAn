@@ -140,6 +140,7 @@ If you use LogAn for publication, please cite the following research papers:
 
 - Pranjal Gupta, Karan Bhukar, Harshit Kumar, Seema Nagar, Prateeti Mohapatra, and Debanjana Kar. 2025. [**LogAn: An LLM-Based Log Analytics Tool with Causal Inferencing**](https://doi.org/10.1145/3680256.3721246). ICPE, 2025.
 
+- Pranjal Gupta, Harshit Kumar, Debanjana Kar, Karan Bhukar, Pooja Aggarwal and Prateeti Mohapatra.2023 [**Learning Representations on Logs for AIOps**](https://arxiv.org/abs/2308.11526). IEEE CLOUD, 2023.
 
 ## Authors & Contributors
 
