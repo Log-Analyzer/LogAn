@@ -87,7 +87,7 @@ if __name__ == "__main__":
     arg_parser.add_argument('--process_log_files', type=validate_boolean, help='Flag to indicate if logs should be processed', default=True)
     arg_parser.add_argument('--process_txt_files', type=validate_boolean, help='Flag to indicate if text should be processed', default=False)
     arg_parser.add_argument('--model-type', type=ModelType, help='Type of model to use for the anomaly report (Currently Supported Values: zero_shot)', default=ModelType.ZERO_SHOT)
-    arg_parser.add_argument('--model-name', type=parse_model_name, help='Model to use for the anomaly report (Default: "cross-encoder/nli-MiniLM2-L6-H768")', default=ZeroShotModels.CROSSENCODER)
+    arg_parser.add_argument('--model', type=parse_model_name, help='Model to use for the anomaly report (Default: "cross-encoder/nli-MiniLM2-L6-H768")', default=ZeroShotModels.CROSSENCODER)
     arg_parser.add_argument('--clean-up', action='store_true', help='Flag to indicate if the output directory should be cleaned up if it exists')
 
     # Parse the arguments provided by the user
@@ -115,7 +115,7 @@ if __name__ == "__main__":
 
     # templatizer.df columns: "text", "preprocessed_text", "truncated_log", "epoch", "timestamps", "file_names", "test_ids"
     # Step 3: Initialize the Anomaly detector and generate the anomaly report
-    anomaly_obj = Anomaly(args.debug_mode, args.model_type, args.model_name)
+    anomaly_obj = Anomaly(args.debug_mode, args.model_type, args.model)
     anomaly_obj.get_anomaly_report(templatizer.df, 
                                    args.output_dir + f"/log_diagnosis/", 
                                    args.output_dir + f"/developer_debug_files/", 

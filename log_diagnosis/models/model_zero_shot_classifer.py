@@ -30,6 +30,7 @@ class ModelZeroShotClassifer(ModelTemplate):
         candidate_labels = ["information", "error", "availability", "latency", "saturation", "traffic"]
         results = self.pipe(input, candidate_labels, batch_size=batch_size)
         if isinstance(results, dict):
+            # zero shot classification returns a dictionary for a single input, so we need to convert it to a list
             results = [results]
         return results
     
@@ -37,5 +38,6 @@ class ModelZeroShotClassifer(ModelTemplate):
         candidate_labels = ["io", "authentication", "network", "application", "device"]
         results = self.pipe(input, candidate_labels, batch_size=batch_size)
         if isinstance(results, dict):
+            # zero shot classification returns a dictionary for a single input, so we need to convert it to a list
             results = [results]
         return results
