@@ -132,6 +132,11 @@ uv run python -m http.server 8000 --directory "${OUTPUT_DIR}"
 # server should be available at http://localhost:8000/log_diagnosis
 ``` 
 
+## Examples
+
+Check out [tutorials](./examples/tutorials/) for more examples on advanced usages.
+
+
 ## 🔥 Citation 
 
 If you use LogAn for publication, please cite the following research papers: 
