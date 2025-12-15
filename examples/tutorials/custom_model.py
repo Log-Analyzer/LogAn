@@ -18,12 +18,24 @@ Usage
 -----
 Run the log diagnosis with your custom model using:
 
-    python run_log_diagnosis.py \
-        --input_files ./examples/Linux_2k.log \
-        --output_dir ./tmp/debug \
+    uv run logan analyze \
+        -f "examples/Linux_2k.log" \
+        -o "tmp/debug" \
         --model-type custom \
-        --model "./examples/tutorials/custom_model.py:GLiNERModel" \
+        --model "examples/tutorials/custom_model.py:GLiNERModel" \
         --clean-up
+
+If you are running this on a container, you can use the following command:
+
+    podman run --rm \
+        -v ./examples/tutorials:/data/extra/:z \
+        -v ./examples/:/data/input/:z \
+        -v ./tmp/output/:/data/output/:z \
+        -e LOGAN_INPUT_FILES="/data/input/Linux_2k.log" \
+        -e LOGAN_OUTPUT_DIR=/data/output/ \
+        -e LOGAN_MODEL_TYPE=custom \
+        -e LOGAN_MODEL="/data/extra/custom_model.py:GLiNERModel" \
+        logan
 
 The `--model` argument format is: "<path_to_script>:<class_name>"
 
@@ -36,7 +48,7 @@ Examples:
 '''
 
 from gliner2 import GLiNER2
-from log_diagnosis.models.manager import ModelTemplate  # Base class for all custom models
+from logan.log_diagnosis.models.manager import ModelTemplate  # Base class for all custom models
 
 
 class GLiNERModel(ModelTemplate):
