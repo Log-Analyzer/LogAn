@@ -127,7 +127,7 @@ def get_anomaly_html_str(df_final_anomalies, output_dir):
     list_chunked_df = split_df_on_size(df_final_anomalies, threshold=2.5*1024*1024)  # 2.5 MB splits
     
     chunk_size = []  # To track the size of each chunk.
-    output_prefix = f'{output_dir}/data'  # Prefix for the output JSON files.
+    output_prefix = f'{output_dir}/developer_debug_files/data'  # Prefix for the output JSON files.
     
     # Iterate through each chunk and save it as a JSON file.
     for idx, df_anomaly in enumerate(list_chunked_df):

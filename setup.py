@@ -3,19 +3,7 @@
 
 import os
 from setuptools import setup, find_packages
-
-# Read version from package
-def get_version():
-    """Extract version from logan/_version.py."""
-    version = "0.0.1"
-    version_path = os.path.join(os.path.dirname(__file__), "logan", "_version.py")
-    if os.path.exists(version_path):
-        with open(version_path, "r", encoding="utf-8") as f:
-            for line in f:
-                if line.startswith("__version__"):
-                    version = line.split("=")[1].strip().strip('"').strip("'")
-                    break
-    return version
+from logan import __version__
 
 
 def read_requirements(filename="requirements.txt"):
@@ -44,7 +32,7 @@ def read_long_description():
 
 setup(
     name="logan",
-    version=get_version(),
+    version=__version__,
     description="Logan - Log Analysis Tool for preprocessing, templatization, and anomaly detection",
     long_description=read_long_description(),
     long_description_content_type="text/markdown",
