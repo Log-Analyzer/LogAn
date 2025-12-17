@@ -3,6 +3,7 @@ name: Build and Push Container Image
 on:
   release:
     types: [published]
+  pull_request:
 
 env:
   REGISTRY: ghcr.io
