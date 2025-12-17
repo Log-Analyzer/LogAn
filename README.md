@@ -22,17 +22,9 @@ It generates two reports:
 
 ### Option 1 - Using Containers (Recommended)
 
-#### Build Container Image
-
-```bash
-podman build -t logan -f Containerfile .
-```
-
 #### Running Container Image
 
-The container is configured via environment variables. Mount your input logs and output directory as volumes.
-
-**Basic Example - Analyze Logs:**
+We provide a container image that you can run standalone or integrate into automated pipelines to analyze logs.
 
 ```bash
 mkdir -p ./tmp/output
@@ -42,7 +34,7 @@ podman run --rm \
     -v ./tmp/output/:/data/output/:z \
     -e LOGAN_INPUT_FILES="/data/input/Linux_2k.log" \
     -e LOGAN_OUTPUT_DIR=/data/output/ \
-    logan
+    ghcr.io/Log-Analyzer/LogAn:latest
 ```
 
 
@@ -61,9 +53,19 @@ podman run --rm \
 | `LOGAN_CLEAN_UP` | `false` | Clean output directory before running |
 
 
+#### Build Container Image
+
+If you want to customize the container image, you can clone this repository and build it manually:
+
+```bash
+podman build -t logan -f Containerfile .
+```
+
 ### Option 2 - Local
 
-```
+You can also directly clone this repository and set up the project without using a container. Make sure you have Python 3 and uv available on your system.
+
+```bash
 # Setup venv
 uv venv
 source .venv/bin/activate

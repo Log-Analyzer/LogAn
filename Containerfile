@@ -45,10 +45,14 @@ ENV PATH="/root/.local/bin/:$PATH"
 
 ## Copying source code
 WORKDIR /opt/app
-COPY . .
 
 # Install logan package
-RUN uv pip install -e .
+COPY requirements.txt .
+RUN uv venv && uv pip install -r requirements.txt
+
+# Copying source code
+COPY . .
+RUN uv pip install -e . --no-deps
 
 # Make run.sh executable
 RUN chmod +x run.sh
@@ -58,6 +62,7 @@ RUN chmod +x run.sh
 #######################################
 
 # Mode: 'analyze' to run log analysis, 'view' to serve report via HTTP
+# TODO: Fix view command not working
 ENV LOGAN_MODE="analyze"
 
 # Input files/directories (comma-separated for multiple)
