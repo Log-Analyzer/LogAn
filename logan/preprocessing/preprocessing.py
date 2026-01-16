@@ -18,7 +18,7 @@ import time
 import numpy as np
 from dateutil import parser as god_parse
 
-from preprocessing import file_utils, pyrbras
+from logan.preprocessing import file_utils, pyrbras
 
 # Global variables
 rbr = None
@@ -635,14 +635,16 @@ class Preprocessing:
         """
         ts = None
         future_flag = False
-        timestamp, ts, future_flag = self.master_datetime_extractor(log, timezone_dict, master_timestamp_list, master_format_list)
-        if not ts:
-            timestamp, ts, future_flag = self.aql_datetime_extractor(log, rbr, timezone_dict)
-        
-        if not future_flag:
-            return timestamp, ts
-        
-        return None, None
+        try:
+            timestamp, ts, future_flag = self.master_datetime_extractor(log, timezone_dict, master_timestamp_list, master_format_list)
+            if not ts:
+                timestamp, ts, future_flag = self.aql_datetime_extractor(log, rbr, timezone_dict)
+            
+            if not future_flag:
+                return timestamp, ts
+        except Exception as e:
+            print(f"Error extracting timestamp \nLogline: {log} \nError: {e}")
+            return None, None
 
     def process_fn(self, log, timezone_dict, master_timestamp_list, master_format_list):
         """

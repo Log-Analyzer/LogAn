@@ -1,137 +1,228 @@
 #!/bin/bash
-# This script runs a series of Python scripts to perform log preprocessing,
-# templatization of preprocessed logs, and followed by anomaly and summary report generation in a pipeline. 
-# It uses environment variables and command line arguments to manage inputs, outputs, and processing stages.
+#
+# Logan Container Entrypoint Script
+# 
+# This script wraps the Logan CLI tool and allows configuration via environment variables.
+# It supports two modes: 'analyze' for log analysis and 'view' for serving reports.
+#
 
-set -uo pipefail  # Exit on error, unset variables are errors, and propagate errors in pipelines.
+set -e
 
-# Parse EXTRA_ARGS environment variable into an array.
-IFS=' ' read -ra array <<< "$EXTRA_ARGS"
-TIME_RANGE=${array[1]}    # Extract the time range from the parsed input.
+# Color codes for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
+NC='\033[0m' # No Color
 
-OPTIONS=("${array[@]:2}")
-## ProcessLogFiles is by default selected (set to be true) in the UI and it should be communicated to PROCESS_LOG_FILES var here.
-PROCESS_LOG_FILES=false
-PROCESS_TXT_FILES=false
-DEBUG_MODE=false
+#######################################
+# Environment Variable Defaults
+#######################################
 
-for variable in "${OPTIONS[@]}"; do
-    case $variable in
-        -ProcessLogFiles)
-            PROCESS_LOG_FILES=true
-            ;;
-        -ProcessTxtFiles)
-            PROCESS_TXT_FILES=true
-            ;;
-        -DebugMode)
-            DEBUG_MODE=true
-            ;;
-        *)
-    esac
-done
+# Mode: 'analyze' to run log analysis, 'view' to serve report via HTTP
+LOGAN_MODE="${LOGAN_MODE:-analyze}"
 
-# Get the input file/folder paths(concatenated with :) on which analysis needs to be performed from the FILE environment variable.
-IFS=':' read -ra INPUT_FILES <<< "$FILE"  # Split input file list into an array.
+# Input files/directories (comma-separated for multiple)
+LOGAN_INPUT_FILES="${LOGAN_INPUT_FILES:-/data/input}"
 
+# Output directory for analysis results
+LOGAN_OUTPUT_DIR="${LOGAN_OUTPUT_DIR:-/data/output}"
 
-export ENVIRONMENT="${OPTIONS[-1]}"
-# Determine the output directory based on the environment setting.
-if [ "$ENVIRONMENT" = "LOCAL" ]; then
-    echo "Running the tool locally"
-    OUTPUT_DIR="${OUT_DIRECTORY}"  # Use specified output directory for LOCAL.
+# Time range for analysis (all-data, 1-day, 2-day, ..., 1-week, 2-week, 1-month)
+LOGAN_TIME_RANGE="${LOGAN_TIME_RANGE:-all-data}"
+
+# Model type for anomaly detection (zero_shot, similarity, custom)
+LOGAN_MODEL_TYPE="${LOGAN_MODEL_TYPE:-zero_shot}"
+
+# Model to use for classification (bart, crossencoder, or custom HuggingFace model)
+LOGAN_MODEL="${LOGAN_MODEL:-crossencoder}"
+
+# Enable debug mode (saves debug files)
+LOGAN_DEBUG_MODE="${LOGAN_DEBUG_MODE:-true}"
+
+# Process .log files from directories
+LOGAN_PROCESS_LOG_FILES="${LOGAN_PROCESS_LOG_FILES:-true}"
+
+# Process .txt files from directories
+LOGAN_PROCESS_TXT_FILES="${LOGAN_PROCESS_TXT_FILES:-false}"
+
+# Clean up output directory before running
+LOGAN_CLEAN_UP="${LOGAN_CLEAN_UP:-false}"
+
+# Port for view mode HTTP server
+LOGAN_VIEW_PORT="${LOGAN_VIEW_PORT:-8000}"
+
+# Directory to serve in view mode (defaults to LOGAN_OUTPUT_DIR if not set)
+LOGAN_VIEW_DIR="${LOGAN_VIEW_DIR:-}"
+
+#######################################
+
+# Determine the command prefix
+# If running in a uv-managed venv (has .venv/bin/logan), use that directly
+# Otherwise fall back to system logan command
+if [ -x ".venv/bin/logan" ]; then
+    LOGAN_CMD=".venv/bin/logan"
+elif [ -x "/opt/app-root/src/.venv/bin/logan" ]; then
+    # Container path
+    LOGAN_CMD="/opt/app-root/src/.venv/bin/logan"
+elif command -v logan &> /dev/null; then
+    LOGAN_CMD="logan"
 else
-    OUTPUT_DIR=$(dirname "$OUT_DIRECTORY")  # Use the parent directory for non-LOCAL environments.
+    echo -e "${RED}Error: logan command not found${NC}"
+    echo "Make sure logan is installed: pip install -e . or uv pip install -e ."
+    exit 1
 fi
 
-# Function to send statistics after pipeline stages.
-# Example: send_stats true
-function send_stats() {
-    success=$1  # Capture the success flag.
-    echo "{\"success\": $success}" > "${OUTPUT_DIR}/metrics/run.json" 2>&1
+echo -e "${CYAN}╔═══════════════════════════════════════════════════════════╗${NC}"
+echo -e "${CYAN}║           Logan - Log Analysis Tool                       ║${NC}"
+echo -e "${CYAN}╚═══════════════════════════════════════════════════════════╝${NC}"
+echo ""
+
+# Print current configuration
+print_config() {
+    echo -e "${YELLOW}Current Configuration:${NC}"
+    echo "  LOGAN_CMD:               ${LOGAN_CMD}"
+    echo "  LOGAN_MODE:              ${LOGAN_MODE}"
+    echo "  LOGAN_INPUT_FILES:       ${LOGAN_INPUT_FILES}"
+    echo "  LOGAN_OUTPUT_DIR:        ${LOGAN_OUTPUT_DIR}"
+    echo "  LOGAN_TIME_RANGE:        ${LOGAN_TIME_RANGE}"
+    echo "  LOGAN_MODEL_TYPE:        ${LOGAN_MODEL_TYPE}"
+    echo "  LOGAN_MODEL:             ${LOGAN_MODEL}"
+    echo "  LOGAN_DEBUG_MODE:        ${LOGAN_DEBUG_MODE}"
+    echo "  LOGAN_PROCESS_LOG_FILES: ${LOGAN_PROCESS_LOG_FILES}"
+    echo "  LOGAN_PROCESS_TXT_FILES: ${LOGAN_PROCESS_TXT_FILES}"
+    echo "  LOGAN_CLEAN_UP:          ${LOGAN_CLEAN_UP}"
+    echo "  LOGAN_VIEW_PORT:         ${LOGAN_VIEW_PORT}"
+    echo ""
 }
 
-# Function to handle the exit status of the last command.
-# Based on the exit code, it either continues or exits the script with telemetry.
-# Example: handle_last_cmd_exit
-function handle_last_cmd_exit() {
-    last_exit_code=$1 # Capture the exit code of the last command.
-   
-    if [ "$last_exit_code" -eq "0" ]; then
-        # The last step ran successfully. No need to break the pipeline
-        return 0
-    elif [ "$last_exit_code" -eq "102" ]; then
-        # Specific exit code 102 handling for two cases.
-        # 1st user has selected None as product name or,
-        # 2nd user has provided archive file as input file.
-        # In both cases empty summary file is created with appropriate error messages
-        echo "Exit Code: $last_exit_code" >> "${OUTPUT_DIR}/run/status.log" 2>&1
-        echo "------------- FAILED: $PIPELINE_STAGE -------------" >> "${OUTPUT_DIR}/run/status.log" 2>&1
+# Run analyze mode
+run_analyze() {
+    echo -e "${GREEN}Running Logan in ANALYZE mode...${NC}"
+    echo ""
+
+    # Validate required environment variables
+    if [ -z "${LOGAN_INPUT_FILES}" ]; then
+        echo -e "${RED}Error: LOGAN_INPUT_FILES is required for analyze mode${NC}"
+        echo "Please set LOGAN_INPUT_FILES to a comma-separated list of files or directories"
         exit 1
-    else 
-        # General failure handling while executing pipeline stages:
-        # It logs and send stats to the dashboard and generate a empty summary and anomaly file
-        echo "Exit Code: $last_exit_code" >> "${OUTPUT_DIR}/run/status.log" 2>&1
-        echo "------------- FAILED: $PIPELINE_STAGE -------------" >> "${OUTPUT_DIR}/run/status.log" 2>&1
-        cd ./log_diagnosis && python3 utils.py --output_dir "${OUTPUT_DIR}/log_diagnosis"
-        send_stats false
-        exit $last_exit_code  # Exit the script with the captured exit code.
     fi
+
+    if [ -z "${LOGAN_OUTPUT_DIR}" ]; then
+        echo -e "${RED}Error: LOGAN_OUTPUT_DIR is required for analyze mode${NC}"
+        exit 1
+    fi
+
+    # Build the command
+    CMD="${LOGAN_CMD} analyze"
+
+    # Parse comma-separated input files and add each as a -f flag
+    IFS=',' read -ra FILES <<< "${LOGAN_INPUT_FILES}"
+    for file in "${FILES[@]}"; do
+        # Trim whitespace
+        file=$(echo "$file" | xargs)
+        if [ -n "$file" ]; then
+            CMD="$CMD -f \"$file\""
+        fi
+    done
+
+    # Add output directory
+    CMD="$CMD -o \"${LOGAN_OUTPUT_DIR}\""
+
+    # Add time range
+    CMD="$CMD -t ${LOGAN_TIME_RANGE}"
+
+    # Add model type
+    CMD="$CMD --model-type ${LOGAN_MODEL_TYPE}"
+
+    # Add model
+    CMD="$CMD -m ${LOGAN_MODEL}"
+
+    # Add debug mode flag
+    if [ "${LOGAN_DEBUG_MODE,,}" = "true" ]; then
+        CMD="$CMD --debug-mode"
+    else
+        CMD="$CMD --no-debug-mode"
+    fi
+
+    # Add process log files flag
+    if [ "${LOGAN_PROCESS_LOG_FILES,,}" = "true" ]; then
+        CMD="$CMD --process-log-files"
+    else
+        CMD="$CMD --no-process-log-files"
+    fi
+
+    # Add process txt files flag
+    if [ "${LOGAN_PROCESS_TXT_FILES,,}" = "true" ]; then
+        CMD="$CMD --process-txt-files"
+    else
+        CMD="$CMD --no-process-txt-files"
+    fi
+
+    # Add clean up flag
+    if [ "${LOGAN_CLEAN_UP,,}" = "true" ]; then
+        CMD="$CMD --clean-up"
+    fi
+
+    echo -e "${CYAN}Executing: ${CMD}${NC}"
+    echo ""
+
+    # Execute the command
+    eval $CMD
+
+    # Make output directory contents accessible to all users (for mounted volumes)
+    echo -e "${YELLOW}Setting permissions on output directory...${NC}"
+    chmod -R 777 "${LOGAN_OUTPUT_DIR}" 2>/dev/null || true
 }
 
-# Function to run a specific pipeline stage and handle errors.
-# It logs the start, measures execution time, and calls handle_last_cmd_exit for error handling.
-function run_pipeline_stage() {
-    echo -e "\n------------- STARTING: $PIPELINE_STAGE -------------" >> "${OUTPUT_DIR}/run/status.log" 2>&1
+# Run view mode
+run_view() {
+    echo -e "${GREEN}Running Logan in VIEW mode...${NC}"
+    echo ""
 
-    "$@"  # Execute the command passed to the function.
-    status_returned=$?  # Capture the status returned by handle_last_cmd_exit.
-    handle_last_cmd_exit $status_returned # Check the command's exit status and handle errors.
-    echo "status_returned: $status_returned"
+    # Use output dir as view dir if LOGAN_VIEW_DIR is not set
+    VIEW_DIR="${LOGAN_VIEW_DIR:-${LOGAN_OUTPUT_DIR}}"
 
-    return $status_returned  # Return the status of the command execution.
+    if [ -z "${VIEW_DIR}" ]; then
+        echo -e "${RED}Error: LOGAN_VIEW_DIR or LOGAN_OUTPUT_DIR is required for view mode${NC}"
+        exit 1
+    fi
+
+    CMD="${LOGAN_CMD} view -d \"${VIEW_DIR}\" -p ${LOGAN_VIEW_PORT}"
+
+    echo -e "${CYAN}Executing: ${CMD}${NC}"
+    echo ""
+    echo -e "${YELLOW}Starting web server on port ${LOGAN_VIEW_PORT}...${NC}"
+    echo -e "${YELLOW}Access the report at: http://localhost:${LOGAN_VIEW_PORT}/${VIEW_DIR}/log_diagnosis/${NC}"
+    echo ""
+
+    # Execute the command
+    eval $CMD
 }
 
+# Main execution
+print_config
 
-# Log the initial script parameters for reference.
-mkdir -p "${OUTPUT_DIR}/run" 
-echo "Running script | OUTPUT_DIR: '${OUTPUT_DIR}' | INPUT FILE: '${INPUT_FILES[@]}'" > "${OUTPUT_DIR}/run/status.log" 2>&1
-echo "Process LOG Files: ${PROCESS_LOG_FILES} | Process TXT Files: ${PROCESS_TXT_FILES} | Debug Mode: ${DEBUG_MODE} | Environment: ${ENVIRONMENT}" >> "${OUTPUT_DIR}/run/status.log" 2>&1
+case "${LOGAN_MODE}" in
+    analyze)
+        run_analyze
+        ;;
+    view)
+        run_view
+        ;;
+    *)
+        echo -e "${RED}Error: Invalid LOGAN_MODE '${LOGAN_MODE}'${NC}"
+        echo ""
+        echo "Supported modes:"
+        echo "  analyze - Analyze log files for anomalies"
+        echo "  view    - Start web server to view analysis reports"
+        echo ""
+        echo "Usage:"
+        echo "  Set LOGAN_MODE=analyze or LOGAN_MODE=view"
+        exit 1
+        ;;
+esac
 
-# Create necessary directories for the pipeline.
-mkdir -p "${OUTPUT_DIR}/pandarallel_cache" # Need for pandarallel to work properly for very large data frames
-mkdir -p "${OUTPUT_DIR}/test_templates" # Drain template model is saved here
-mkdir -p "${OUTPUT_DIR}/log_diagnosis"  # stores the two output reports: ({PRODUCT_NAME}_anomaly.html and {PRODUCT_NAME}_summary.html)
-mkdir -p "${OUTPUT_DIR}/developer_debug_files" # metadata stored for debugging
-mkdir -p "${OUTPUT_DIR}/metrics" # Stores runtime statistics of the tool
-cp -r ./log_diagnosis/templates/libs "${OUTPUT_DIR}/log_diagnosis"  # Copy necessary templates.
+echo ""
+echo -e "${GREEN}Done!${NC}"
 
-# Set environment variables for memory file system and cache directories.
-export MEMORY_FS_ROOT="${OUTPUT_DIR}/pandarallel_cache"
-export TRANSFORMERS_CACHE="${TRANSFORMERS_CACHE:-$OUTPUT_DIR/cache}"
-echo "TRANSFORMERS_CACHE=$TRANSFORMERS_CACHE"
-
-# Run the first pipeline stage: CMD Args Check
-PIPELINE_STAGE="CMDLINE_ARGS_CHECK"
-run_pipeline_stage python3 args.py --input_files "${INPUT_FILES[@]}" --output_dir "${OUTPUT_DIR}/log_diagnosis" > "${OUTPUT_DIR}/run/args.log" 2>&1
-echo "Command line arguments checked!" >> "${OUTPUT_DIR}/run/status.log" 2>&1
-
-# Proceed only if the previous stage was successful: Log Diagnosis
-PIPELINE_STAGE="ANOMALY_DETECTION"
-run_pipeline_stage python3 run_log_diagnosis.py --input_files "${INPUT_FILES[@]}" --output_dir "$OUTPUT_DIR" --time_range $TIME_RANGE --debug_mode $DEBUG_MODE --process_log_files $PROCESS_LOG_FILES --process_txt_files $PROCESS_TXT_FILES > "${OUTPUT_DIR}/run/log_diagnosis.log" 2>&1
-echo "Anomaly Detection Completed!" >> "${OUTPUT_DIR}/run/status.log" 2>&1
-
-# Causality Python script (currently not supported - v0.2.4).
-# cd /log_diagnosis
-# PIPELINE_STAGE="CAUSALITY"
-# run_pipeline_stage python3 causality.py --input_file "${OUTPUT_DIR}/inferencing_file/inference.csv" --signal_map "${OUTPUT_DIR}/developer_debug_files/temp_id_to_signal_map.json" --output_file "${OUTPUT_DIR}/log_diagnosis/${PRODUCT_NAME}_causality.html" --template_map "${OUTPUT_DIR}/developer_debug_files/temp_id_to_rep_log.json" > "${OUTPUT_DIR}/run/causality.log" 2>&1
-# echo "Temporal Causality Completed!" >> "${OUTPUT_DIR}/run/status.log" 2>&1
-
-# Send telemetry to Elasticsearch at the end of the pipeline.
-send_stats true
-
-
-rm -rf "${OUTPUT_DIR}/pandarallel_cache"
-rm -rf "${OUTPUT_DIR}/cache"
-
-echo "Log Diagnosis Completed!"
-echo "Please check "${OUTPUT_DIR}/run" directory for detailed logs"

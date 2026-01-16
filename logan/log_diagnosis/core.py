@@ -12,7 +12,7 @@ from transformers import pipeline
 from transformers.pipelines.pt_utils import KeyDataset
 from datasets import Dataset
 
-from log_diagnosis.models import ModelManager, AllModels, ModelType
+from logan.log_diagnosis.models import ModelManager, AllModels, ModelType
 
 pandarallel.initialize(progress_bar=False)
 tqdm.pandas()

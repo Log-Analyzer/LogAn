@@ -9,8 +9,6 @@ from jinja2 import Template
 import pandas as pd
 import numpy as np
 
-import sys
-sys.path.append('../Drain3')
 
 
 arg_parser = ArgumentParser()

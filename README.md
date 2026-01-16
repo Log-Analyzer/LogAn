@@ -22,115 +22,74 @@ It generates two reports:
 
 ### Option 1 - Using Containers (Recommended)
 
-`container.sh` contains wrapper for building and running the LogAn as container.
+#### Running Container Image
+
+We provide a container image that you can run standalone or integrate into automated pipelines to analyze logs.
+
+```bash
+mkdir -p ./tmp/output
+
+podman run --rm \
+    -v ./examples/:/data/input/:z \
+    -v ./tmp/output/:/data/output/:z \
+    -e LOGAN_INPUT_FILES="/data/input/Linux_2k.log" \
+    -e LOGAN_OUTPUT_DIR=/data/output/ \
+    ghcr.io/Log-Analyzer/LogAn:latest
+```
+
+
+#### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `LOGAN_INPUT_FILES` | `/data/input` | Input files/directories (comma-separated for multiple) |
+| `LOGAN_OUTPUT_DIR` | `/data/output` | Output directory for analysis results |
+| `LOGAN_TIME_RANGE` | `all-data` | Time range filter: `all-data`, `1-day`, `2-day`, ..., `1-week`, `2-week`, `1-month` |
+| `LOGAN_MODEL_TYPE` | `zero_shot` | Model type: `zero_shot`, `similarity`, `custom` |
+| `LOGAN_MODEL` | `crossencoder` | Model for classification: `bart`, `crossencoder`, or custom HuggingFace model |
+| `LOGAN_DEBUG_MODE` | `true` | Enable debug mode (saves additional metadata files) |
+| `LOGAN_PROCESS_LOG_FILES` | `true` | Process `.log` files found in directories |
+| `LOGAN_PROCESS_TXT_FILES` | `false` | Process `.txt` files found in directories |
+| `LOGAN_CLEAN_UP` | `false` | Clean output directory before running |
+
 
 #### Build Container Image
 
-```
-bash container.sh build ## You can change ENV=docker/podman in the file
-```
+If you want to customize the container image, you can clone this repository and build it manually:
 
-#### Running Container Image
-
-1. Execute `container.sh` as follows: 
-    ```bash
-    bash container.sh run OUTPUT_DIR LOG_FILE_PATH TIME_RANGE(OPTIONAL) -ProcessLogFiles(OPTIONAL) -ProcessTxtFiles(OPTIONAL) -DebugMode(OPTIONAL) 
-    ```
-   - OUTPUT_DIR - The directory where the tool's reports are stored
-   - LOG_FILE_PATH - Folders/files separated by colon(:). 
-   - TIME_RANGE - Run analysis only on log lines that fall in the time range determined by the latest date in the data (Allowed values: [1-6]-day, [1-3]-week, 1-month, all-data)
-   - `-ProcessLogFiles` - Enable this to process .LOG files (found in folders). This will not affect .LOG files that you have provided explicitly.
-   - `-ProcessTxtFiles` - Enable this to process .TXT files (found in folders). This will not affect .TXT files that you have provided explicitly.
-   - `-DebugMode` - Enable this flag to store metadata generated during a job for troubleshooting
-
-   Example:
-   ```bash
-       bash container.sh run ./tmp/output ./examples/Linux_2k.log all-data
-   ```
-   In the above example: 
-   - `./examples/Linux_2k.log` - File
-   - `./tmp/output` - Directory
-
-
-<!-- 2. After running, you will get the following output:
 ```bash
-   OUTPUT_DIR
-   ├── cache
-   │   └── version.txt
-   ├── data
-   │   └── <INPUT_DATA>
-   ├── developer_debug_files
-   │   ├── default_anomalies.csv
-   │   ├── default_anomalies_all_info.csv
-   │   ├── default_anomalies_info.csv
-   │   ├── default_summ_gs_error.csv
-   │   ├── default_summ_gs_info.csv
-   │   ├── default_temp_to_rep_log.json
-   │   └── default_temp_to_signal_map.json
-   ├── inferencing_file
-   │   └── inference.csv
-   ├── log_diagnosis
-   │   ├── default_anomalies.html
-   │   ├── default_anomalies_info.html
-   │   ├── default_summ_gs_error.html
-   │   └── default_summ_gs_info.html
-   ├── logs
-   │   ├── preprocessed_file_epoch-0.log
-   │   ├── preprocessed_file_logs-0.log
-   │   ├── preprocessed_file_names-0.log
-   │   ├── preprocessed_file_timestamps-0.log
-   ├── logs_shards
-   │   ├── discarded_logs_with_none_time.log
-   │   ├── paths_filenames_test_output.log
-   │   └── preprocessed_data.csv
-   ├── matcher_output_test
-   │   └── default_output_matcher.json
-   ├── metrics
-   │   ├── preprocessing.json
-   │   ├── run.json
-   │   └── time.json
-   ├── pandaralle_cache
-   ├── run
-   │   ├── drain_train.log
-   │   ├── input_file_generation.log
-   │   ├── log_diagnosis.log
-   │   ├── preprocess.log
-   │   ├── stats.log
-   │   └── status.log
-   └── test_templates
-       └── tm-test.templates.json
+podman build -t logan -f Containerfile .
 ```
-
-
-3. You can open `OUTPUT_DIR/log_diagnosis/default_summ_gs_error.html` and `OUTPUT_DIR/log_diagnosis/default_anomalies.html` to check the log diagnosis output. -->
-
 
 ### Option 2 - Local
 
-```
+You can also directly clone this repository and set up the project without using a container. Make sure you have Python 3 and uv available on your system.
+
+```bash
 # Setup venv
 uv venv
 source .venv/bin/activate
 
-uv pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu
 uv pip install -r requirements.txt
 
 # Run Log Analysis
-export OUTPUT_DIR="./tmp/output"
-
-uv run python run_log_diagnosis.py \
-    --input_files "./examples/Linux_2k.log" \
-    --output_dir "$OUTPUT_DIR" \
-    --model-name "cross-encoder/nli-MiniLM2-L6-H768"
+uv run logan analyze \
+    -f "examples/Linux_2k.log" \
+    -o "tmp/output"
 ```
 
 
 ## How to View the Reports (Output)
 ```bash
-uv run python -m http.server 8000 --directory "${OUTPUT_DIR}"
+uv run logan view -d "tmp/output"
 
 # server should be available at http://localhost:8000/log_diagnosis
 ``` 
+
+## Examples
+
+Check out [tutorials](./examples/tutorials/) for more examples on advanced usages.
+
 
 ## 🔥 Citation 
 

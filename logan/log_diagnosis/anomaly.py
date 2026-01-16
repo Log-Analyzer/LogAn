@@ -5,11 +5,8 @@ import time
 import csv
 from .core import Core
 from datetime import datetime
-from utils import get_anomaly_html_str, get_summary_html_str
-from log_diagnosis.models import ModelManager, AllModels, ModelType
-
-import sys
-sys.path.append("..")
+from logan.log_diagnosis.utils import get_anomaly_html_str, get_summary_html_str
+from logan.log_diagnosis.models import ModelManager, AllModels, ModelType
 
 class Anomaly(Core):
     """
@@ -202,7 +199,7 @@ class Anomaly(Core):
             }
             writer.write(json.dumps(data, indent=4))
 
-    def get_anomaly_report(self, df_inference_csv, output_file, debug_file):
+    def get_anomaly_report(self, df_inference_csv, output_dir):
         """
         Generates an anomaly report from the input DataFrame, processes it for anomalies, merges similar windows,
         and saves the results in HTML format for both anomalies and summary reports.
@@ -215,9 +212,12 @@ class Anomaly(Core):
         Returns:
             None
         """
-        
+        print("Output directory:", output_dir)
+
+        log_diagnosis_dir = os.path.join(output_dir, "log_diagnosis")
+        developer_debug_dir = os.path.join(output_dir, "developer_debug_files")
+
         start = time.time()
-        print("output_file", output_file)
 
         # Disable token parallelism to prevent concurrency issues
         os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -241,12 +241,12 @@ class Anomaly(Core):
         print("ended the preprocessing of input data")
         
         # Log template and signal map debug files
-        debug_file_path = os.path.join(debug_file, "temp_id_to_rep_log.json")  
+        debug_file_path = os.path.join(developer_debug_dir, "temp_id_to_rep_log.json")  
         if (self.debug_mode == "true"):
             with open(debug_file_path, 'w') as writer:
                 json.dump(temp_id_to_rep_log, writer, indent=4) 
         json_serializable_map = {str(k): v for k, v in temp_id_to_signal_map.items()}
-        debug_file_path = os.path.join(debug_file, "temp_id_to_signal_map.json") 
+        debug_file_path = os.path.join(developer_debug_dir, "temp_id_to_signal_map.json") 
         if (self.debug_mode == "true"):
             with open(debug_file_path, 'w') as writer:
                 json.dump(json_serializable_map, writer, indent=4)
@@ -299,23 +299,22 @@ class Anomaly(Core):
             'list_result': ["Anomaly"]*len(log_seq),
             'list_templates': template_ids2
         })
-    
+
         # Read debug information (ignored and processed files)
-        debug_directory = os.path.dirname(debug_file)
-        with open(os.path.join(debug_directory, "ignored_files.log"), 'r') as reader:
+        with open(os.path.join(developer_debug_dir, "ignored_files.log"), 'r') as reader:
             ignored_files = reader.read().splitlines()
 
-        with open(os.path.join(debug_directory, "processed_files.log"), 'r') as reader:
+        with open(os.path.join(developer_debug_dir, "processed_files.log"), 'r') as reader:
             processsed_files = reader.read().splitlines()
         
         # Generate the HTML table for the anomaly report
-        html_table = get_anomaly_html_str(df_final_anomalies, debug_directory)
-        with open(os.path.join(output_file, "anomalies.html"), "w") as f:
+        html_table = get_anomaly_html_str(df_final_anomalies, output_dir)
+        with open(os.path.join(log_diagnosis_dir, "anomalies.html"), "w") as f:
             f.write(html_table)
 
         # Generate the HTML table for the summary report
         html_table = get_summary_html_str(df_for_summary_html, include_golden_signal_dropdown=True, ignored_file_list=ignored_files, processed_file_list=processsed_files)
-        with open(os.path.join(output_file, "summary.html"), "w") as f:
+        with open(os.path.join(log_diagnosis_dir, "summary.html"), "w") as f:
             f.write(html_table)
 
-        self.compute_anomaly_statistics(os.path.dirname(os.path.dirname(debug_file)), (time.time() - start) * 1000)
+        self.compute_anomaly_statistics(output_dir, (time.time() - start) * 1000)
