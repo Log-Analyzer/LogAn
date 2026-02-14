@@ -1,53 +1,55 @@
-<div class="popup-overlay" id="popup">
-    <div class="popup-content">
-        <button class="close-button" id="close-popup">&times;</button>
-
-        <h1 style="text-align: center;"> Important Announcement </h1>
-
-        <p> AnalyzeSWSupport <b> doesn't support the following file formats: </b> 
-        <ul> 
-            <li> '.xml' , .bin, .jar files, binary files </li>
-            <li> Archive Files such as '.zip', '.tar', '.gz'. <br> Please <i> unpack </i> the archive and <i> select only relevant files </i> as input.  </li>
-        </ul>          
-        {% if ignored_file_list|length == 0 and processed_file_list|length == 0 %}
-            <h4 style="text-align: center; color:red">No input files found in the input folder</h4>
-        {% else %}
-        <p> The following input files were <u><i>ignored</i></u> by AnalyzeSWSupport: </p>
-        
-            <ul>        
-                {% for file in ignored_file_list[:10] %}
-                    <li> {{ file }} </li>
-                {% endfor %}
-                {% if ignored_file_list|length > 10 %}
-                    <li>...</li>
-                {% endif %}
+<div class="announcement-overlay" id="popup" role="dialog" aria-modal="true" aria-labelledby="announcement-title">
+    <div class="announcement-modal">
+        <button type="button" class="announcement-close" id="close-popup" aria-label="Close announcement">&times;</button>
+        <div class="announcement-content">
+            <h2 id="announcement-title">Important Announcement</h2>
+            <p>AnalyzeSWSupport <strong>doesn't support the following file formats:</strong></p>
+            <ul>
+                <li>'.xml', .bin, .jar files, binary files</li>
+                <li>Archive files such as '.zip', '.tar', '.gz'. Please <em>unpack</em> the archive and <em>select only relevant files</em> as input.</li>
             </ul>
-
-            {% if processed_file_list|length > 0 %}
-                <p> The following input files were <u>processed</u> by AnalyzeSWSupport: </p>
+            {% if ignored_file_list|length == 0 and processed_file_list|length == 0 %}
+                <p class="no-files">No input files found in the input folder</p>
+            {% else %}
+                <p>The following input files were <u><em>ignored</em></u> by AnalyzeSWSupport:</p>
                 <ul>
-                {% for file in processed_file_list[:10] %}
-                    <li>{{ file }}</li>
-                {% endfor %}
-                {% if processed_file_list|length > 10 %}
-                    <li>...</li>
-                {% endif %}
+                    {% for file in ignored_file_list[:10] %}
+                        <li>{{ file }}</li>
+                    {% endfor %}
+                    {% if ignored_file_list|length > 10 %}
+                        <li>…</li>
+                    {% endif %}
                 </ul>
+                {% if processed_file_list|length > 0 %}
+                    <p>The following input files were <u>processed</u> by AnalyzeSWSupport:</p>
+                    <ul>
+                        {% for file in processed_file_list[:10] %}
+                            <li>{{ file }}</li>
+                        {% endfor %}
+                        {% if processed_file_list|length > 10 %}
+                            <li>…</li>
+                        {% endif %}
+                    </ul>
+                {% endif %}
             {% endif %}
-        {% endif %}
+        </div>
     </div>
 </div>
-
 <script>
-    // This function will run when the window has finished loading
-    window.onload = function() {
-        // Show the pop-up
-        document.getElementById('popup').style.display = 'block';
-    };
-
-    // Add event listener to the close button to hide the pop-up
-    document.getElementById('close-popup').addEventListener('click', function() {
-        document.getElementById('popup').style.display = 'none';
+(function() {
+    const popup = document.getElementById('popup');
+    const closeBtn = document.getElementById('close-popup');
+    if (!popup || !closeBtn) return;
+    function openModal() {
+        popup.classList.add('is-open');
+    }
+    function closeModal() {
+        popup.classList.remove('is-open');
+    }
+    window.addEventListener('load', openModal);
+    closeBtn.addEventListener('click', closeModal);
+    popup.addEventListener('click', function(e) {
+        if (e.target === popup) closeModal();
     });
-
+})();
 </script>

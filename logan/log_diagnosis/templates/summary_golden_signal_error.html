@@ -3,449 +3,336 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ title }}</title>
+    <title>{% if title %}{{ title }}{% else %}Summary Report{% endif %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;500;600;700&family=Red+Hat+Text:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="./libs/dataTables.dataTables.css">
     <link rel="stylesheet" href="./libs/dataTables.searchHighlight.css">
+    <style>{% include 'static/popup.css' %}</style>
+    <style>{% include 'static/summary.css' %}</style>
     <script src="./libs/jquery-latest.min.js"></script>
     <script src="./libs/dataTables.js"></script>
     <script src="./libs/dataTables.searchHighlight.min.js"></script>
     <script src="./libs/jquery.highlight.js"></script>
-
-    <style>
-        {% include 'static/popup.css' %}
-        .table-header-wrapper {
-            position: relative;
-        }
-        .table-header-wrapper {
-            position: relative;
-        }
-        .chevron {
-            display: -webkit-inline-box;
-            width: 0;
-            height: 0;
-            margin-left: 10px;
-            margin-top: 22px; 
-            border-top: 8px solid transparent; 
-            border-bottom: 8px solid transparent; 
-            border-left: 8px solid black; 
-        }
-        .expanded {
-            transform: rotate(180deg);
-        }
-        #expand-column-button {
-            width: 30px; 
-            height: 64px; 
-            right: -20px; 
-            bottom: -140px; 
-            position: absolute;
-            background-color: #d7d3d0;
-            border: 1px solid #b2acac;
-            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2), 0 12px 40px rgba(0, 0, 0, 0.19); /* Updated shadow */
-            border-radius: 4px; 
-            background-image: linear-gradient(to top, #d7d3d0, #f0f0f0);
-        }
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-        }
-        #jsonTable {
-            position: relative;
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        #jsonTable th, #jsonTable td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: center;
-        }
-
-        #jsonTable th {
-            background-color: #f2f2f2;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-            border: 1px solid #ddd;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-        th, td {
-            padding: 12px;
-            text-align: left;
-            border-bottom: 1px solid #ddd;
-            max-width: 200px;
-            word-wrap: break-word;
-            word-break: break-all;
-        }
-
-        th {
-            background-color: #f2f2f2;
-        }
-
-        td {
-            background-color: #fff;
-        }
-
-        .ellipsis_added {
-            background-color: #d7d9ea;
-            cursor: pointer;
-            padding: 0 5px;
-            margin: 10px;
-            border-radius: 5px;
-        }
-        tbody tr:nth-child(even) td {
-            background-color: #f2f2f2 !important;
-        }
-        tbody tr:hover td {
-            background-color: #dcdcdc !important;
-        }
-        .show-less-button {
-            background-color: #d7d9ea;
-            cursor: pointer;
-            padding: 0 5px;
-            margin: 0 10px;
-            border-radius: 5px;
-            color: #464261;
-            border: 1px solid #a7afdc;
-        }
-        #jsonTable_wrapper .dt-layout-table {
-            border-radius: 20px;
-        }
-        #jsonTable_wrapper th {
-            background-color: #333;
-            color: #fff;
-        }
-        #jsonTable_wrapper .dt-layout-table table {
-            border-radius: 10px;
-            overflow: hidden;
-            width: 100%;
-            font-family: "IBM Plex Sans", sans-serif;
-            font-weight: 400;
-            font-style: normal;
-        }
-
-        #tableContainer table.dataTable thead th, table.dataTable tfoot th {
-            font-weight: unset;
-        }
-        #tableContainer {
-            padding: 20px;
-        }
-        #tableContainer .dt-layout-cell.dt-start {
-            float: right;
-        }
-        #tableContainer .dt-layout-cell.dt-end {
-            float: left;
-        }
-        #tableContainer #dt-search-0 {
-            width: 45vw;
-            padding: 10px;
-            border-radius: 6px;
-        }
-        #tableContainer .dt-search label {
-            font-family: "IBM Plex Sans", sans-serif;
-            font-weight: 400;
-            font-style: normal;
-        }
-        #tableContainer .dt-length label {
-            display: none;
-        }
-
-        #tableContainer .dt-layout-cell.dt-start {
-            position: relative;
-        }
-        #tableContainer .dt-length {
-            display: inline-block;
-            position: absolute;
-            top: 0;
-            right: 100%;
-            transform: translateX(-10px);
-            padding: 10px 0;
-        }
-
-        #tableContainer .dt-length::before {
-            content: "View";
-            position: absolute;
-            top: 4px;
-            right: calc(100% + 10px);
-            transform: translateY(70%);
-            font-family: "IBM Plex Sans", sans-serif;
-            font-weight: 400;
-            font-style: normal;
-        }
-
-        #tableContainer .dt-layout-row {
-            font-family: "IBM Plex Sans", sans-serif;
-            font-weight: 400;
-            font-style: normal;
-            font-size: 0.9em;
-        }
-        #tableContainer #dt-length-0 {
-            border-radius: 10%;
-        }
-
-        #goldenSignalFilter {
-            width: 60%;
-            margin: 7px auto 0 auto;
-            border-radius: 5px;
-            background: #fcf9f9;
-        }
-        #tableHeading {
-            font-family: "IBM Plex Sans", sans-serif;
-            font-weight: 400;
-            font-style: normal;
-            margin-top: 0;
-            font-size: 1.75em;
-            background: white;
-            padding: 22px;
-            margin-bottom: 0;
-        }
-        #tableContainer .dt-layout-row:nth-child(3) .dt-layout-cell.dt-start {
-            float: unset;
-        }
-        .button {
-            border: none;
-            color: white;
-            padding: 15px 32px;
-            text-align: center;
-            text-decoration: none;
-            display: inline-block;
-            font-size: 16px;
-            margin: 4px 2px;
-            cursor: pointer;
-        }
-        .button2 {
-            background-color: #008CBA;
-        }
-        .button.button2:disabled {
-            background-color: #cccccc; /* Grey background color */
-            color: #666666; /* Grey text color */
-        }
-        #filterContainer {
-            display: inline-block;
-            position: absolute;
-            right: 10%;
-            margin-top: 8px;
-        }
-        #filterContainer .custom_filter-label {
-            font-family: "IBM Plex Sans", sans-serif !important;
-            font-weight: 400 !important;
-            font-style: normal !important;
-            font-size: 0.9em;
-        }
-        #customFilter {
-            padding: 6px;
-            border-radius: 5px;
-            border: 1px solid #aaa;
-            position: relative;
-            max-width: 15vw;
-            z-index: 99;
-            margin-left: 5px;
-        }
-    </style>
-    <script>
-        function applyGoldenSignalFilter() {
-            var filterValue = document.getElementById("goldenSignalFilter").value.toLowerCase();
-            document.getElementById('dt-search-0').value = filterValue;
-            document.getElementById('dt-search-0').dispatchEvent(new Event('input', { bubbles: true }));
-        }
-        let df = null
-
-        function populateSelectOptions() { //fucntion to fetch unique filename and to append them to option tag
-            console.log("inside populate select option")
-            const select = document.getElementById('customFilter');
-
-            const arr = {{ unique_file_names }}
-            console.log("unique file names", arr)
-            if (arr.length > 0) {
-
-                arr.sort((a, b) => {
-                const fileNameA = a.match(/([^/]+)$/)[0].toLowerCase();
-                const fileNameB = b.match(/([^/]+)$/)[0].toLowerCase();
-                return fileNameA.localeCompare(fileNameB);
-                                     });
-
-                arr.forEach(item => {
-                    const fileNameMatch = item.match(/([^/]+)$/)[0];
-                    console.log('Populate select options File name', fileNameMatch)
-                    const option = document.createElement('option');
-                    option.title = item
-                    option.value = item;
-                    option.textContent = fileNameMatch;
-                    select.appendChild(option);
-                    console.log('Populate select options', option)
-                });
-            }
-        }
-
-        function loadSummaryTable() {
-            df = {{ summary_table | safe }}; // list of rows from the summary table provided by backend
-            if (df) {
-                populateSelectOptions();
-                console.log("inside load summary table post populateSelectOptions()")
-            }
-            const table = new DataTable('#jsonTable', {
-                autowidth: false,
-                columns: [
-                    { searchable: false , width:'5%'}, // Sl no.
-                    { searchable: true , width:'64%'}, // Representative Log Line
-                    { searchable: true , width:'10%'}, // Golden Signal Filter
-                    { searchable: false, visible: false, width:'7%' }, // Count
-                    { searchable: false, visible: false , width:'10%'} // Coverage
-                ],
-                searchHighlight: true,
-                language: {
-                    search: "Search for keyword(s) in Representative Log Lines",
-                    searchPlaceholder: "Search",
-                },
-                destroy: true,
-                ordering:false,
-                data: df,
-                createdRow: function (row, data, index) {
-                    // set sl no.
-                    $('td', row).eq(0).html(index + 1);
-                    // Get the cell value for the "Representative Log Line" column
-                    let log_line = data[1];
-                    // Truncate the text if it exceeds 500 characters
-                    if (log_line.length > 500) {
-                        let truncatedLogLine = log_line.substring(0, 500);
-                        $('td:eq(1)', row).html(truncatedLogLine);
-                        let $ellipsisSpan = $('<span class="ellipsis_added">...</span>');
-                        $('td:eq(1)', row).append($ellipsisSpan);
-
-                        $ellipsisSpan.click(function() {
-                            $('td:eq(1)', row).html(log_line);
-                            let $showLessButton = $('<button class="show-less-button">Show Less</button>');
-                            $showLessButton.click(function() {
-                                $('td:eq(1)', row).html(truncatedLogLine);
-                                $('td:eq(1)', row).append($ellipsisSpan);
-                                $showLessButton.remove();
-                            });
-                            $('td:eq(1)', row).append($showLessButton);
-
-                            $('td:eq(1)', row).on('click', '.ellipsis_added', function() {
-                                $('td:eq(1)', row).html(log_line);
-                                $('td:eq(1)', row).append($showLessButton);
-                                $showLessButton.click(function() {
-                                    $('td:eq(1)', row).html(truncatedLogLine);
-                                    $('td:eq(1)', row).append($ellipsisSpan);
-                                    $showLessButton.remove();
-                                });
-                            });
-                        });
-                    } else {
-                        $('td:eq(1)', row).html(log_line);
-                    }
-                    // Left align Representative log lines cell
-                    $('td:eq(1)', row).css('text-align', 'left');
-                    // add attributes to the log line
-                    $('td:eq(1)', row).attr('template-id', data[0]);
-                    $('td:eq(1)', row).attr('count', data[3]);
-                    $('td:eq(1)', row).attr('coverage', data[4]);
-                    $('td:eq(1)', row).attr('title', data[5]);
-                    console.log(data[5])
-                    $('td:eq(1)', row).hover(function() {
-                        $(this).attr('title', data[5]);
-                    }, function() {
-                        $(this).removeAttr('title');
-                    });
-                }
-            });
-            document.getElementById('jsonTable').style.display = "table";
-            document.getElementById('jsonTable').style.width = "100%";
-            $('#expand-column-button').on('click', function() {
-                const column4 = table.column(3); 
-                const column5 = table.column(4); 
-                var chevron = document.getElementById('chevron');
-                chevron.classList.toggle('expanded');
-                // Toggle visibility
-                column4.visible(!column4.visible());
-                column5.visible(!column5.visible());
-                table.columns.adjust();
-                table.page(currentPage).draw(false);
-            });
-        }
-
-        document.addEventListener("DOMContentLoaded", function () {
-            loadSummaryTable();
-        });
-
-        // function to apply folder filter
-        function applyCustomFilter() {
-            console.log("apply custom filter")
-            const filterValue = document.getElementById('customFilter').value.toLowerCase();
-            console.log("filtered Value", filterValue)
-
-            const table = $('#jsonTable').DataTable();
-            // This will clear the existing rows in the data table
-            table.clear().draw();
-
-            if (filterValue === '') {
-                // This will show all the rows if filter is empty
-                df.forEach(rowData => {
-                    table.row.add(rowData).draw(false);
-                });
-            } else {
-                // This is to filter the rows based on selected filename
-                df.forEach(rowData => {
-                    const fileName = rowData[5].toLowerCase();
-                    console.log("filename", fileName)
-                    if (fileName === filterValue) {
-                        table.row.add(rowData).draw(false);
-                    }
-                });
-            }
-        }
-    </script>
 </head>
-<body>
-    <h1 id="tableHeading">Summary Report</h1>
-    <div id="tableContainer" style="overflow: auto;">
-        <div id="filterContainer">
-            <label for="customFilter" class="custom_filter-label">Custom Filter:</label>
-            <select id="customFilter" onchange="applyCustomFilter()">  <!--  function to apply filter by folder names -->
-                <option value="">All</option>
-            </select>
-        </div>
-        <table id="jsonTable">
-            <thead>
-                <tr>
-                    <th>Sl no.</th>
-                    <th>Representative Logline</th>
-                    {% if include_golden_signal_dropdown %}
-                        <th>
-                            <div style="display: flex; flex-direction: column;">
-                                <span>Golden Signal</span>
-                                <select id="goldenSignalFilter" onchange="applyGoldenSignalFilter()">
-                                    <option value="">All</option>
-                                    <option value="error">Error</option>
-                                    <option value="latency">Latency</option>
-                                    <option value="saturation">Saturation</option>
-                                    <option value="traffic">Traffic</option>
-                                    <option value="availability">Availability</option>
-                                    <option value="information">Information</option>
-                                </select>
-                            </div>
-                        </th>
-                    {% else %}
-                        <th>Golden Signal</th>
-                    {% endif %}
-                    <th>Count</th>
-                    <th>Coverage(%)</th>
-                    <div class="table-header-wrapper">
-                        <div id="expand-column-button">
-                            <div id="chevron" class="chevron"></div>
+<body class="summary-page pf-theme-redhat">
+    <div class="pf-v5-c-page">
+        <header class="pf-v5-c-masthead summary-header" role="banner">
+            <div class="pf-v5-c-masthead__main">
+                <a class="pf-v5-c-masthead__brand" href="#" aria-label="Red Hat">
+                    <span class="pf-v5-c-masthead__brand-logo">
+                        <span class="rh-logo-mark" aria-hidden="true"></span>
+                    </span>
+                    <span class="pf-v5-c-masthead__brand-title">LogAn</span>
+                </a>
+            </div>
+            <div class="pf-v5-c-masthead__content">
+                <h1 class="pf-v5-c-title pf-m-2xl summary-title">Summary Report</h1>
+                <span class="pf-v5-c-badge pf-m-read summary-badge" id="summaryBadge" aria-live="polite">0 log templates</span>
+            </div>
+        </header>
+
+        <main class="pf-v5-c-page__main">
+            <section class="summary-stats-dashboard" id="summaryStats" aria-label="Summary statistics">
+                <div class="summary-stat-cards">
+                    <div class="summary-stat-card summary-stat-card--total">
+                        <span class="summary-stat-card__value" id="statTotal">0</span>
+                        <span class="summary-stat-card__label">Total logs</span>
+                    </div>
+                    <div class="summary-stat-card summary-stat-card--errors">
+                        <span class="summary-stat-card__value" id="statErrors">0</span>
+                        <span class="summary-stat-card__label">Errors</span>
+                    </div>
+                    <div class="summary-stat-card summary-stat-card--latency">
+                        <span class="summary-stat-card__value" id="statLatency">0</span>
+                        <span class="summary-stat-card__label">Latency</span>
+                    </div>
+                    <div class="summary-stat-card summary-stat-card--information">
+                        <span class="summary-stat-card__value" id="statInformation">0</span>
+                        <span class="summary-stat-card__label">Information</span>
+                    </div>
+                </div>
+            </section>
+
+            <section class="pf-v5-c-toolbar summary-toolbar" role="toolbar" aria-label="Filters">
+                <div class="pf-v5-c-toolbar__content">
+                    <div class="pf-v5-c-toolbar__group pf-m-filter-group">
+                        <div class="pf-v5-c-toolbar__item toolbar-group">
+                            <label class="pf-v5-c-form__label" for="customFilter">File</label>
+                            <select id="customFilter" class="pf-v5-c-form-control" aria-label="Filter by file">
+                                <option value="">All files</option>
+                            </select>
+                        </div>
+                        {% if include_golden_signal_dropdown %}
+                        <div class="pf-v5-c-toolbar__item toolbar-group">
+                            <label class="pf-v5-c-form__label" for="goldenSignalFilter">Golden Signal</label>
+                            <select id="goldenSignalFilter" class="pf-v5-c-form-control" aria-label="Filter by golden signal">
+                                <option value="">All</option>
+                                <option value="error">Error</option>
+                                <option value="latency">Latency</option>
+                                <option value="saturation">Saturation</option>
+                                <option value="traffic">Traffic</option>
+                                <option value="availability">Availability</option>
+                                <option value="information">Information</option>
+                            </select>
+                        </div>
+                        {% endif %}
+                        <div class="pf-v5-c-toolbar__item toolbar-group">
+                            <button type="button" class="pf-v5-c-button pf-m-secondary toggle-cols-btn" id="expand-column-button" aria-label="Toggle Count and Coverage columns" aria-pressed="false">
+                                <span class="pf-v5-c-button__icon chevron-icon" aria-hidden="true"></span>
+                                <span>Count/Coverage</span>
+                            </button>
                         </div>
                     </div>
-                </tr>
-            </thead>
-            <tbody>
-                <!-- Data will be populated using Javascript -->
-            </tbody>
-        </table>
+                </div>
+            </section>
+
+            <div id="tableContainer" class="pf-v5-c-card summary-card">
+                <div class="pf-v5-c-card__body">
+                    <div id="summaryEmpty" class="pf-v5-c-empty-state summary-empty" role="status" style="display: none;">
+                        <div class="pf-v5-c-empty-state__icon summary-empty-icon" aria-hidden="true">
+                            <svg fill="currentColor" width="2em" height="2em" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11zm-2-9H8v2h8v-2zm0 4H8v2h8v-2z"/></svg>
+                        </div>
+                        <h2 class="pf-v5-c-title pf-m-md">No log data to display</h2>
+                        <p class="pf-v5-c-empty-state__body">Process log files to generate a summary report.</p>
+                    </div>
+                    <div class="pf-v5-c-table summary-table-wrap" id="summaryTableWrap" style="display: none;">
+                        <table id="jsonTable" class="pf-v5-c-table dataTable" role="table" aria-label="Summary log table">
+                            <thead>
+                                <tr class="pf-v5-c-table__tr">
+                                    <th class="pf-v5-c-table__th" scope="col">#</th>
+                                    <th class="pf-v5-c-table__th" scope="col">Representative log line</th>
+                                    {% if include_golden_signal_dropdown %}
+                                    <th class="pf-v5-c-table__th" scope="col">
+                                        <div class="th-golden-signal">
+                                            <span>Golden Signal</span>
+                                        </div>
+                                    </th>
+                                    {% else %}
+                                    <th class="pf-v5-c-table__th" scope="col">Golden Signal</th>
+                                    {% endif %}
+                                    <th class="pf-v5-c-table__th" scope="col">Count</th>
+                                    <th class="pf-v5-c-table__th" scope="col">Coverage (%)</th>
+                                </tr>
+                            </thead>
+                            <tbody class="pf-v5-c-table__tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
     </div>
-        {% include 'popup.html' %}
-    
+
+    <div class="pf-v5-c-backdrop summary-modal-overlay" id="logPreviewModal" role="dialog" aria-modal="true" aria-labelledby="logPreviewTitle" aria-hidden="true">
+        <div class="pf-v5-c-modal-box summary-modal">
+            <div class="pf-v5-c-modal-box__header summary-modal-header">
+                <h2 class="pf-v5-c-modal-box__title pf-v5-c-title pf-m-md" id="logPreviewTitle">Full log line</h2>
+                <button type="button" class="pf-v5-c-button pf-m-plain summary-modal-close" id="logPreviewClose" aria-label="Close">
+                    <span class="pf-v5-c-modal-box__close-icon">×</span>
+                </button>
+            </div>
+            <div class="pf-v5-c-modal-box__body summary-modal-body" id="logPreviewBody"></div>
+        </div>
+    </div>
+
+    {% include 'popup.html' %}
+
+    <script>
+(function() {
+    const LOG_TRUNCATE_LEN = 500;
+    const GS_BADGE_MAP = {
+        error: 'gs-badge--error pf-m-danger',
+        latency: 'gs-badge--latency pf-m-warning',
+        saturation: 'gs-badge--saturation',
+        traffic: 'gs-badge--traffic pf-m-blue',
+        availability: 'gs-badge--availability pf-m-success',
+        information: 'gs-badge--information pf-m-read'
+    };
+
+    let df = {{ summary_table | safe }};
+    let dataTableInstance = null;
+
+    function gsBadgeClass(gs) {
+        const key = (gs || '').toLowerCase();
+        return GS_BADGE_MAP[key] || 'gs-badge--information pf-m-read';
+    }
+
+    function updateStats() {
+        if (!df || !Array.isArray(df)) return;
+        let errors = 0, latency = 0, information = 0;
+        df.forEach(function(row) {
+            const gs = (row[2] || '').toLowerCase();
+            if (gs === 'error') errors++;
+            else if (gs === 'latency') latency++;
+            else if (gs === 'information') information++;
+        });
+        document.getElementById('statTotal').textContent = df.length;
+        document.getElementById('statErrors').textContent = errors;
+        document.getElementById('statLatency').textContent = latency;
+        document.getElementById('statInformation').textContent = information;
+        const badge = document.getElementById('summaryBadge');
+        if (badge) badge.textContent = df.length + ' log template' + (df.length !== 1 ? 's' : '');
+    }
+
+    function populateSelectOptions() {
+        const select = document.getElementById('customFilter');
+        if (!select) return;
+        const arr = {{ unique_file_names }};
+        if (!arr || arr.length === 0) return;
+        const sorted = arr.slice().sort(function(a, b) {
+            const nameA = (a.match(/([^/]+)$/) || [a, a])[1].toLowerCase();
+            const nameB = (b.match(/([^/]+)$/) || [b, b])[1].toLowerCase();
+            return nameA.localeCompare(nameB);
+        });
+        sorted.forEach(function(item) {
+            const option = document.createElement('option');
+            const fileName = (item.match(/([^/]+)$/) || [item, item])[1];
+            option.value = item;
+            option.textContent = fileName;
+            option.title = item;
+            select.appendChild(option);
+        });
+    }
+
+    function applyGoldenSignalFilter() {
+        const sel = document.getElementById('goldenSignalFilter');
+        if (!sel) return;
+        const value = (sel.value || '').trim().toLowerCase();
+        if (!dataTableInstance) return;
+        dataTableInstance.column(2).search(value ? '^' + value + '$' : '', true, false, true).draw();
+    }
+
+    function applyCustomFilter() {
+        const filterValue = (document.getElementById('customFilter').value || '').toLowerCase();
+        if (!dataTableInstance) return;
+        dataTableInstance.clear();
+        if (filterValue === '') {
+            df.forEach(function(rowData) {
+                dataTableInstance.row.add(rowData).draw(false);
+            });
+        } else {
+            df.forEach(function(rowData) {
+                const fileName = (rowData[5] || '').toLowerCase();
+                if (fileName === filterValue) {
+                    dataTableInstance.row.add(rowData).draw(false);
+                }
+            });
+        }
+    }
+
+    function openLogPreview(fullText) {
+        const overlay = document.getElementById('logPreviewModal');
+        const body = document.getElementById('logPreviewBody');
+        if (!overlay || !body) return;
+        body.textContent = fullText;
+        overlay.classList.add('is-open');
+        overlay.setAttribute('aria-hidden', 'false');
+    }
+
+    function closeLogPreview() {
+        const overlay = document.getElementById('logPreviewModal');
+        if (!overlay) return;
+        overlay.classList.remove('is-open');
+        overlay.setAttribute('aria-hidden', 'true');
+    }
+
+    document.getElementById('logPreviewClose').addEventListener('click', closeLogPreview);
+    document.getElementById('logPreviewModal').addEventListener('click', function(e) {
+        if (e.target === this) closeLogPreview();
+    });
+
+    function loadSummaryTable() {
+        const emptyEl = document.getElementById('summaryEmpty');
+        const tableWrap = document.getElementById('summaryTableWrap');
+        const tableEl = document.getElementById('jsonTable');
+        if (!df || !Array.isArray(df) || df.length === 0) {
+            if (emptyEl) emptyEl.style.display = 'block';
+            if (tableWrap) tableWrap.style.display = 'none';
+            updateStats();
+            return;
+        }
+        if (emptyEl) emptyEl.style.display = 'none';
+        if (tableWrap) tableWrap.style.display = 'block';
+        populateSelectOptions();
+        updateStats();
+
+        const table = new DataTable('#jsonTable', {
+            autowidth: false,
+            columns: [
+                { searchable: false, width: '5%' },
+                { searchable: true, width: '64%' },
+                { searchable: true, width: '10%' },
+                { searchable: false, visible: false, width: '7%' },
+                { searchable: false, visible: false, width: '10%' }
+            ],
+            searchHighlight: true,
+            language: {
+                search: 'Search in log lines',
+                searchPlaceholder: 'Search'
+            },
+            destroy: true,
+            ordering: false,
+            data: df,
+            createdRow: function(row, data, dataIndex) {
+                const $row = $(row);
+                $row.addClass('pf-v5-c-table__tr');
+                $row.find('td').eq(0).html(dataIndex + 1).addClass('pf-v5-c-table__td');
+                const logLine = data[1] || '';
+                const logCell = $row.find('td').eq(1);
+                logCell.addClass('log-line-cell pf-v5-c-table__td').css('text-align', 'left');
+                logCell.attr('template-id', data[0]);
+                logCell.attr('data-count', data[3]);
+                logCell.attr('data-coverage', data[4]);
+                logCell.attr('title', data[5] || '');
+
+                if (logLine.length > LOG_TRUNCATE_LEN) {
+                    const truncated = logLine.substring(0, LOG_TRUNCATE_LEN);
+                    logCell.html(truncated);
+                    const viewFull = $('<button type="button" class="pf-v5-c-button pf-m-link pf-m-inline log-line-view-full" aria-label="View full log line">View full</button>');
+                    viewFull.on('click', function() { openLogPreview(logLine); });
+                    logCell.append(viewFull);
+                } else {
+                    logCell.html(logLine);
+                }
+
+                const gs = (data[2] || 'information').toLowerCase();
+                const badgeClass = gsBadgeClass(gs);
+                $row.find('td').eq(2).addClass('pf-v5-c-table__td').html('<span class="pf-v5-c-badge ' + badgeClass + '">' + (data[2] || '') + '</span>');
+                $row.find('td').eq(3).addClass('pf-v5-c-table__td');
+                $row.find('td').eq(4).addClass('pf-v5-c-table__td');
+            }
+        });
+
+        dataTableInstance = $('#jsonTable').DataTable();
+        tableEl.style.display = 'table';
+        tableEl.style.width = '100%';
+
+        const toggleBtn = document.getElementById('expand-column-button');
+        if (toggleBtn) {
+            toggleBtn.addEventListener('click', function() {
+                const colCount = dataTableInstance.column(3);
+                const colCoverage = dataTableInstance.column(4);
+                const visible = colCount.visible();
+                colCount.visible(!visible);
+                colCoverage.visible(!visible);
+                dataTableInstance.columns.adjust();
+                const pageInfo = dataTableInstance.page.info();
+                dataTableInstance.page(pageInfo.page).draw(false);
+                toggleBtn.classList.toggle('expanded', !visible);
+                toggleBtn.setAttribute('aria-pressed', !visible ? 'true' : 'false');
+            });
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        loadSummaryTable();
+        const customFilter = document.getElementById('customFilter');
+        if (customFilter) customFilter.addEventListener('change', applyCustomFilter);
+        const goldenSignalFilter = document.getElementById('goldenSignalFilter');
+        if (goldenSignalFilter) goldenSignalFilter.addEventListener('change', applyGoldenSignalFilter);
+    });
+})();
+    </script>
 </body>
 </html>

@@ -1,41 +1,94 @@
-.popup-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(163, 158, 158, 0.5); 
-    display: flex;
-    flex-direction: column;
-    justify-content: center; /* Center vertically */
-    align-items: center; 
+/* Announcement modal - Red Hat / PatternFly themed */
+
+.summary-page .announcement-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(3, 3, 3, 0.4);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1001;
+  padding: 1rem;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease, visibility 0.2s ease;
 }
-li{
-    margin-bottom: 4px;
+
+.summary-page .announcement-overlay.is-open {
+  opacity: 1;
+  visibility: visible;
 }
-.popup-content {
-    color: blue;
-    text-align: left;
-    position: relative;
-    top: 40px;
-    background-color: #fff;
-    padding: 20px;
-    border-radius: 10px;
-    width: 80%;
-    max-width: 600px;
-    max-height: 80%;
-    word-wrap: break-word;
-    overflow-y: auto;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
-    margin: auto; 
+
+.summary-page .announcement-modal {
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 0.25rem 0.5rem 0.0625rem rgba(3, 3, 3, 0.16);
+  width: 100%;
+  max-width: 560px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  border: 1px solid #d2d2d2;
 }
-.close-button {
-    color: blue;
-    position: absolute;
-    top: 10px;
-    right: 20px;
-    background: none;
-    border: none;
-    font-size: 24px;
-    cursor: pointer;
+
+.summary-page .announcement-modal .announcement-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: none;
+  border: none;
+  padding: 0.35rem;
+  cursor: pointer;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: #6a6e73;
+  border-radius: 6px;
+}
+
+.summary-page .announcement-modal .announcement-close:hover {
+  color: #151515;
+  background: #e7e7e7;
+}
+
+.summary-page .announcement-modal .announcement-close:focus {
+  outline: 2px solid #c9190b;
+  outline-offset: 2px;
+}
+
+.summary-page .announcement-modal .announcement-content {
+  padding: 1.5rem;
+  overflow-y: auto;
+  font-family: "Red Hat Text", "Overpass", sans-serif;
+  font-size: 0.875rem;
+  color: #151515;
+  text-align: left;
+}
+
+.summary-page .announcement-modal .announcement-content h2 {
+  margin: 0 0 1rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+  font-family: "Red Hat Display", "Overpass", sans-serif;
+  text-align: center;
+}
+
+.summary-page .announcement-modal .announcement-content p {
+  margin: 0 0 0.75rem;
+}
+
+.summary-page .announcement-modal .announcement-content ul {
+  margin: 0 0 1rem;
+  padding-left: 1.5rem;
+}
+
+.summary-page .announcement-modal .announcement-content li {
+  margin-bottom: 0.25rem;
+}
+
+.summary-page .announcement-modal .announcement-content .no-files {
+  text-align: center;
+  color: #c9190b;
+  font-weight: 500;
 }

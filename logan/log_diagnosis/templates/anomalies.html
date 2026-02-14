@@ -1,267 +1,94 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{{ title }}</title>
-<style>
-     .loading-popup {
-        display: none; /* Hidden by default */
-        position: fixed; /* Sit on top of the page content */
-        left: 50%;
-        top: 50%;
-        transform: translate(-50%, -50%);
-        padding: 20px;
-        background-color: rgba(0, 0, 0, 0.8); /* Black background with opacity */
-        color: white;
-        font-size: 20px;
-        border-radius: 5px;
-        z-index: 1000; /* Sit on top */
-    }
-    body {
-        font-family: Arial, sans-serif;
-        }
-    table {
-        width: 100%;
-        border-collapse: collapse;
-        table-layout: fixed;
-        margin-top: 20px;
-        border: 1px solid #ddd;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    }
-    #resultTable th {
-        background-color: #393939;
-        color: white;
-    }
-    thead {
-        height: 50px;
-    }
-    th, td {
-        padding: 12px;
-        text-align: left;
-        border-bottom: 1px solid #ddd;
-    }
-    #resultTable table tbody tr {
-          height: 400px; 
-    }
-    .scrollable {
-        font-family: 'Courier New', Courier, monospace; 
-        overflow-y: auto;
-        max-height: 400px; 
-        white-space: normal; 
-        word-break: keep-all;
-    }
-    .log-content {
-        white-space: pre-line;
-        display: block;
-        overflow-wrap: break-word;
-        word-break: keep-all;
-    }
-    .button {
-          position: absolute;
-          left: 45%;
-          border: none;
-          color: white;
-          padding: 15px 32px;
-          text-align: center;
-          text-decoration: none;
-          display: inline-block;
-          font-size: 16px;
-          margin: 12px 0px;
-          cursor: pointer;
-          background-color: #0f62fe;
-    }
-    table.dataTable thead .sorting_asc {
-        background-image: none !important;
-    } 
-    .show-more, .show-less {
-        background-color: #fff;
-        cursor: pointer;
-        padding: 0 5px;
-        margin: 10px;
-        border-radius: 5px;
-    }
-    .more-logs, .less-logs {
-        border: none;
-        color: #fff;
-        background-color: #999cac;
-        cursor: pointer;
-        padding: 5px;
-        margin: 10px;
-        border-radius: 6px;
-    }
-    #resultTable tbody tr td {
-        position:relative
-    }
-    #resultTable tbody tr:nth-child(even) td {
-        background-color:  #f2f2f2 !important;
-    }
-    #resultTable tbody tr:hover td {
-        background-color:  #e0e0e0 !important; 
-    }
-    #resultTable_filter {
-        display: flex;
-        float:left;
-        align-items: center;
-        margin-bottom: 12px;
-        width: 90%;
-    }
-    #resultTable_filter > label {
-        flex: 1;
-        display: flex;
-    }
-    #resultTable_filter > label > input {
-        flex: 1;
-        width: 100%;
-        height: 32px;
-        padding: 4px;
-    }
-    #paginationText {
-         flex-shrink: 0;
-    }
-    #paginationControls {
-        display: flex;
-        gap: 10px;
-        flex-shrink: 0;
-        padding-bottom: 10px;
-        margin-right: 19px;
-    }
-    #resultTable_wrapper {
-        margin-top: 35px;
-    }
-    .fixed-header {
-        position: fixed;
-        top: 0;
-        width: 100%;
-        height:2%;
-        background: white; 
-        text-align: center;
-        padding: 10px 0;
-        z-index: 1000;
-        box-shadow: -2px 0 5px rgba(0,0,0,0.1); 
-    }
-    .color-circle {
-        width: 15px;
-        height: 15px;
-        border-radius: 50%;
-        position: relative;
-        cursor: pointer;
-    }
-    .color-legend {
-        width: 78%;
-        display: flex;
-        justify-content: space-evenly;
-    }   
-    .legent-text {
-        margin-left: 17px;
-        white-space: nowrap;
-        font-size: small;
-        font-style: italic;
-    }
-    .button2 {
-        background-color: #0f62fe;
-    }
-    .button.button2:disabled {
-      background-color: #cccccc; 
-      color: #666666; 
-    }
-    #feedbackForm {
-        margin-bottom: 7%;
-    }
-    #feedbackForm table {
-        width: 100%;
-        border-collapse: collapse;
-    }
-    #feedbackForm tr {
-        height:10px;
-    }
-    #tableContainer {
-        margin-top: 3%;
-        padding: 20px;
-        overflow-y: auto;
-    }
-    .log-num {
-        position:absolute;
-        bottom:5;
-        font-size: small;
-        font-style: italic;
-    }
-    @media (max-width: 768px) {
-        #resultTable_filter > label > input {
-            width: 100%;
-        }
-    }
-</style>
-<link rel="stylesheet" href="./libs/jquery.dataTables.min.css">
-<link rel="stylesheet" href="./libs/dataTables.searchHighlight.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if title %}{{ title }}{% else %}Anomaly Report{% endif %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;500;600;700&family=Red+Hat+Text:ital,wght@0,400;0,500;0,600;0,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./libs/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="./libs/dataTables.searchHighlight.css">
+    <style>{% include 'static/anomalies.css' %}</style>
 </head>
-<body>
-    <header class="fixed-header"> 
-        <div style="display: flex; align-items: baseline;">
-        <div id="paginationText"></div> 
-         <div class="color-legend">        
-            <div class="color-circle" style="background-color: #a67909;" ><span class="legent-text">Latency Logs</span></div>
-            <div class="color-circle" style="background-color: #8B0000;" ><span class="legent-text">Error Logs</span></div>
-            <div class="color-circle" style="background-color: #00008B;" ><span class="legent-text">Availability Logs</span></div>
-            <div class="color-circle" style="background-color: #FF8C00;" ><span class="legent-text">Saturation Logs</span></div>
-            <div class="color-circle" style="background-color: #006400;" ><span class="legent-text">Traffic logs</span></div>
-        </div> 
-        <div id="paginationControls">
-            <button id="prevPage" disabled>Previous</button>
-            <button id="nextPage">Next</button>
-        </div>
-        </div>
-    </header>
-    <div id="loading-popup" class="loading-popup">
-        Loading...
-    </div>
-   
-    <div id="tableContainer">
-        <table id="resultTable">
-            <thead>
-                <tr>
-                    <th style="width: 17%;">Duration (GMT)</th>
-                    <th style="width: 76%;">Anomalous Window (Logs)</th>
-                    <th style="width: 7%;"></th>
-                </tr>
-            </thead>
-            <tbody id="dataBody">
-                <!-- Table rows will be dynamically populated -->
-            </tbody>
-        </table>
+<body class="anomalies-page pf-theme-redhat">
+    <div class="pf-v5-c-page">
+        <header class="anomalies-masthead" role="banner">
+            <a class="anomalies-masthead__brand" href="#" aria-label="Red Hat">
+                <span class="rh-logo-mark" aria-hidden="true"></span>
+                <span class="anomalies-masthead__title">LogAn</span>
+            </a>
+        </header>
+
+        <main class="pf-v5-c-page__main">
+            <section class="anomalies-toolbar" role="toolbar" aria-label="Pagination and legend">
+                <div id="paginationText"></div>
+                <div class="anomalies-legend">
+                    <span class="anomalies-legend__item"><span class="anomalies-legend__dot anomalies-legend__dot--latency" aria-hidden="true"></span>Latency</span>
+                    <span class="anomalies-legend__item"><span class="anomalies-legend__dot anomalies-legend__dot--error" aria-hidden="true"></span>Error</span>
+                    <span class="anomalies-legend__item"><span class="anomalies-legend__dot anomalies-legend__dot--availability" aria-hidden="true"></span>Availability</span>
+                    <span class="anomalies-legend__item"><span class="anomalies-legend__dot anomalies-legend__dot--saturation" aria-hidden="true"></span>Saturation</span>
+                    <span class="anomalies-legend__item"><span class="anomalies-legend__dot anomalies-legend__dot--traffic" aria-hidden="true"></span>Traffic</span>
+                </div>
+                <div id="paginationControls">
+                    <button type="button" id="prevPage" disabled>Previous</button>
+                    <button type="button" id="nextPage">Next</button>
+                </div>
+            </section>
+
+            <div id="loading-popup" class="loading-popup">
+                <span class="loading-popup__content">Loading...</span>
+            </div>
+
+            <div class="anomalies-card">
+                <div id="tableContainer">
+                    <table id="resultTable">
+                        <thead>
+                            <tr>
+                                <th style="width: 17%;">Duration (GMT)</th>
+                                <th style="width: 76%;">Anomalous Window (Logs)</th>
+                                <th style="width: 7%;"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="dataBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
     </div>
 
-<script src="./libs/jquery-3.6.0.min.js"></script>
-<script src="./libs/jquery.dataTables.min.js"></script>
-<script src="./libs/dataTables.searchHighlight.min.js"></script>
-<script src="./libs/jquery.highlight.js"></script>
-<script>
+    <script src="./libs/jquery-3.6.0.min.js"></script>
+    <script src="./libs/jquery.dataTables.min.js"></script>
+    <script src="./libs/dataTables.searchHighlight.min.js"></script>
+    <script src="./libs/jquery.highlight.js"></script>
+    <script>
 let fileIndex = 1;
 let loading = false;
 var currentPage = 1;
-const chunkSize = {{chunk_size}}
-const totalEntries ={{no_of_windows}}
-const noOfFiles ={{no_of_chunks}}
+const chunkSize = {{ chunk_size }};
+const totalEntries = {{ no_of_windows }};
+const noOfFiles = {{ no_of_chunks }};
 dataTable = new DataTable('#resultTable', {
       "autoWidth": false,
       "columns": [
-          { "searchable": false},
-          { "searchable": true},
-          { "searchable": false},
+          { "searchable": false },
+          { "searchable": true },
+          { "searchable": false },
       ],
       "searchHighlight": true,
       "ordering": false,
       "language": {
-          "search": "Search for keywords in Log Windows",
+          "search": "Search in log windows",
           "searchPlaceholder": "Enter search keyword(s)",
       },
       "destroy": true,
-      "paging":false,
+      "paging": false,
       "info": false,
    });
 
-// Initial load
 loadJsonFiles(fileIndex);
 updatePaginationText(fileIndex);
+
 document.getElementById('prevPage').addEventListener('click', function() {
     if (currentPage > 1) {
         currentPage--;
@@ -281,25 +108,24 @@ document.getElementById('nextPage').addEventListener('click', function() {
 });
 
 function updateTableDisplay(fileIndex) {
-    //clear the table
     dataTable.clear().draw();
     loadJsonFiles(fileIndex);
     updatePaginationText(fileIndex);
 }
+
 function scrollToTopOfTable() {
     document.getElementById('resultTable').scrollIntoView();
 }
 
 function updatePaginationText(fileIndex) {
-    let cs = {{chunk_size}}
-    if (fileIndex == 1){
+    let cs = {{ chunk_size }};
+    if (fileIndex == 1) {
         start = 1;
+    } else {
+        start = cs.slice(0, fileIndex - 1).reduce((acc, curr) => acc + curr, 0) + 1;
     }
-    else{
-        start = cs.slice(0, fileIndex-1).reduce((acc, curr) => acc + curr, 0) + 1;
-    }
-    end = start + cs[fileIndex-1] - 1;
-    paginationText = `Showing ${start} to ${end} of ${totalEntries} entries`;
+    end = start + cs[fileIndex - 1] - 1;
+    paginationText = "Showing " + start + " to " + end + " of " + totalEntries + " entries";
     document.getElementById('paginationText').textContent = paginationText;
 
     prevButton = document.getElementById('prevPage');
@@ -308,34 +134,32 @@ function updatePaginationText(fileIndex) {
     nextButton.disabled = currentPage === noOfFiles;
 }
 
-// Function to retrieve data from LocalStorage
 function getDataFromLocalStorage(i) {
     const data = localStorage.getItem("fileData");
-    let parsedData =  JSON.parse(data)
-    return parsedData[i]
+    let parsedData = JSON.parse(data);
+    return parsedData[i];
 }
+
 async function loadJsonFiles(fileIndex) {
-    if (loading) return; 
+    if (loading) return;
     loading = true;
     document.getElementById('loading-popup').style.display = 'block';
-    let fileName = `../developer_debug_files/data_${fileIndex}.json`;
+    let fileName = "{{ output_dir }}/data_" + fileIndex + ".json";
     try {
-    const response = await fetch(fileName);
-    const data = await response.json();
-    if (data){
-        initialLoadData(data);
-        localStorage.setItem("fileData", JSON.stringify(data));
-    }
-    
-  } 
-  catch (error) {
-        console.error(`Error loading ${fileName}:`, error);
+        const response = await fetch(fileName);
+        const data = await response.json();
+        if (data) {
+            initialLoadData(data);
+            localStorage.setItem("fileData", JSON.stringify(data));
         }
-        finally {
+    } catch (error) {
+        console.error("Error loading " + fileName + ":", error);
+    } finally {
         document.getElementById('loading-popup').style.display = 'none';
-        loading = false; 
-        }
+        loading = false;
     }
+}
+
 function initialLoadData(data) {
     const rows = [];
     for (let i = 0; i < data.length; i++) {
@@ -352,19 +176,17 @@ function initialLoadData(data) {
             let gs = item.gs[index];
             templateId = item.templateIds[index];
             const color = getColorForGS(gs);
-            const signal = getSignal(gs); 
+            const signal = getSignal(gs);
             const logTitle = item.files[index];
             const logContent = log.length < 500 ? log : log.substring(0, 400) + '...';
 
             if (signal === 'gs' && !templateIdSet.has(templateId)) {
                 templateIdSet.add(templateId);
                 noOfLogLines++;
-                logDivs += `
-                    <div class="log-content" template-id=${templateId} title="${logTitle}" index=${index} style="color:${color}">
-                        ${logContent}
-                        ${log.length < 500 ? "" : '<span class="show-more">Show More</span>'}
-                    </div>
-                    </br>`;
+                logDivs += '<div class="log-content" template-id=' + templateId + ' title="' + logTitle.replace(/"/g, '&quot;') + '" index=' + index + ' style="color:' + color + '">' +
+                    logContent +
+                    (log.length < 500 ? '' : '<span class="show-more">Show More</span>') +
+                    '</div><br>';
             }
         }
 
@@ -372,7 +194,6 @@ function initialLoadData(data) {
             let gs = item.gs[index];
             let templateId = item.templateIds[index];
             let signal = ['latency', 'error', 'availability', 'saturation', 'traffic'].includes(gs) ? 'gs' : 'non_gs';
-
             if (signal === 'gs' && !templateIdSet.has(templateId)) {
                 showMoreLogs = true;
                 break;
@@ -380,37 +201,39 @@ function initialLoadData(data) {
         }
 
         if (showMoreLogs) {
-            logDivs += `<button class="more-logs">Show More Logs</button>`;
+            logDivs += '<button class="more-logs">Show More Logs</button>';
         }
 
         rows.push([
-           `${item.duration} <div class="log-num">#logs displayed: 5</div>`,
-            `<div class="scrollable" data-item=${i} >${logDivs}</div>`,
-            `<input type="checkbox" onclick="handleCheckbox(this)" checked> Unique LL </br>
-            <input type="checkbox" onclick="handleCheckbox(this)" checked name="LL with GS"> LL with GS`
+            item.duration + ' <div class="log-num">#logs displayed: 5</div>',
+            '<div class="scrollable" data-item=' + i + '>' + logDivs + '</div>',
+            '<input type="checkbox" onclick="handleCheckbox(this)" checked> Unique LL <br><input type="checkbox" onclick="handleCheckbox(this)" checked name="LL with GS"> LL with GS'
         ]);
     }
-    
+
     dataTable.rows.add(rows).draw();
     document.getElementById('loading-popup').style.display = 'none';
-
 }
 
 async function loadData(scrollableDiv, uniqueFlag, gsFlag, type) {
     const itemIndex = scrollableDiv.getAttribute('data-item');
-    const item = await getDataFromLocalStorage(itemIndex);
-    
+    const item = getDataFromLocalStorage(itemIndex);
+
     if (!item) {
-        console.error(`No data found for index: ${itemIndex}`);
+        console.error("No data found for index: " + itemIndex);
         return;
     }
 
-    const { logs, gs, templateIds, files } = item;
+    const logs = item.logs;
+    const gs = item.gs;
+    const templateIds = item.templateIds;
+    const files = item.files;
     const itemLength = logs.length;
     const templateIdSet = new Set();
     let logHtml = '';
     let index = 0;
-    let log_num= 0;
+    let log_num = 0;
+
     const shouldAddContent = (signal, templateId) => {
         if (uniqueFlag && gsFlag) return signal === 'gs' && !templateIdSet.has(templateId);
         if (!uniqueFlag && gsFlag) return signal === 'gs';
@@ -418,26 +241,20 @@ async function loadData(scrollableDiv, uniqueFlag, gsFlag, type) {
         return true;
     };
 
-    const generateLogContent = (index) => {
-        const log = logs[index];
-        const logTitle = files[index];
-        const color = getColorForGS(gs[index]);
-        const logContent = log.length < 500 ? log : `${log.substring(0, 400)}...`;
+    const generateLogContent = (idx) => {
+        const log = logs[idx];
+        const logTitle = files[idx];
+        const color = getColorForGS(gs[idx]);
+        const logContent = log.length < 500 ? log : log.substring(0, 400) + '...';
         const showMoreSpan = log.length > 500 ? '<span class="show-more">Show More</span>' : '';
-        
-        return `
-            <div class="log-content" title="${logTitle}" index="${index}" style="color:${color}">
-                ${logContent}
-                ${showMoreSpan}
-            </div>
-            <br>`;
+        return '<div class="log-content" title="' + logTitle.replace(/"/g, '&quot;') + '" index="' + idx + '" style="color:' + color + '">' +
+            logContent + showMoreSpan + '</div><br>';
     };
 
     if (type === "showAll") {
         for (index = 0; index < itemLength; index++) {
             const signal = getSignal(gs[index]);
             const templateId = templateIds[index];
-
             if (shouldAddContent(signal, templateId)) {
                 if (signal === 'gs') templateIdSet.add(templateId);
                 log_num++;
@@ -448,11 +265,9 @@ async function loadData(scrollableDiv, uniqueFlag, gsFlag, type) {
     } else {
         let noOfLogLines = 0;
         let showMoreLogs = false;
-
         for (index = 0; noOfLogLines < 5 && index < itemLength; index++) {
             const signal = getSignal(gs[index]);
             const templateId = templateIds[index];
-
             if (shouldAddContent(signal, templateId)) {
                 if (signal === 'gs') templateIdSet.add(templateId);
                 log_num++;
@@ -460,42 +275,33 @@ async function loadData(scrollableDiv, uniqueFlag, gsFlag, type) {
                 noOfLogLines++;
             }
         }
-
         for (; index < itemLength; index++) {
             const signal = getSignal(gs[index]);
             const templateId = templateIds[index];
-
             if (shouldAddContent(signal, templateId)) {
                 showMoreLogs = true;
                 break;
             }
         }
-
         if (showMoreLogs) logHtml += '<button class="more-logs">Show More Logs</button>';
     }
 
     scrollableDiv.innerHTML = logHtml;
     let logNumDiv = scrollableDiv.parentElement.previousSibling.getElementsByClassName('log-num')[0];
-    logNumDiv.innerHTML = `#logs displayed: ${log_num}`;
+    if (logNumDiv) logNumDiv.innerHTML = '#logs displayed: ' + log_num;
     document.getElementById('loading-popup').style.display = 'none';
 }
 
-$('#resultTable').on('click', '.show-more', async function() {
+$('#resultTable').on('click', '.show-more', function() {
     const logDiv = this.parentElement;
     const index = logDiv.getAttribute('index');
     const dataItemIndex = logDiv.parentElement.getAttribute('data-item');
-    try {
-        const item = await getDataFromLocalStorage(dataItemIndex);
-        if (!item) {
-            console.error('No data found');
-            return;
-        }
-        const fullLog = item.logs[index];
-        logDiv.innerHTML = `${fullLog} <span class="show-less">Show Less</span>`;
-    } catch (error) {
-        console.error('Error retrieving data:', error);
-    }
+    const item = getDataFromLocalStorage(parseInt(dataItemIndex, 10));
+    if (!item) return;
+    const fullLog = item.logs[index];
+    logDiv.innerHTML = fullLog + ' <span class="show-less">Show Less</span>';
 });
+
 $('#resultTable').on('click', '.show-less', function() {
     const logDiv = this.parentElement;
     const logContent = logDiv.textContent;
@@ -506,10 +312,10 @@ $('#resultTable').on('click', '.show-less', function() {
 $('#resultTable').on('click', '.more-logs', async function() {
     const scrollableDiv = this.parentElement;
     const checkboxes = scrollableDiv.closest('tr').querySelectorAll('td:nth-child(3) input[type="checkbox"]');
-    const [uniqueFlag, gsFlag] = [checkboxes[0].checked, checkboxes[1].checked];
-    
+    const uniqueFlag = checkboxes[0].checked;
+    const gsFlag = checkboxes[1].checked;
+
     document.getElementById('loading-popup').style.display = 'block';
-    // Check if jQuery, DataTables, or the SearchHighlight plugin is not loaded
     if (!window.jQuery || !$.fn.dataTable || !$.fn.dataTable.SearchHighlight) {
         const loadScript = (src) => {
             return new Promise((resolve) => {
@@ -519,11 +325,9 @@ $('#resultTable').on('click', '.more-logs', async function() {
                 document.head.appendChild(script);
             });
         };
-        // Load jQuery if it is not already available on the page
         if (!window.jQuery) {
             await loadScript('https://code.jquery.com/jquery-3.6.0.min.js');
         }
-        // Load DataTables SearchHighlight plugin and the highlight library in parallel
         await Promise.all([
             loadScript('./libs/dataTables.searchHighlight.min.js'),
             loadScript('./libs/jquery.highlight.js')
@@ -531,8 +335,7 @@ $('#resultTable').on('click', '.more-logs', async function() {
     }
 
     await loadData(scrollableDiv, uniqueFlag, gsFlag, "showAll");
-    
-    // Initialize or reinitialize the DataTable with specific configurations
+
     $('#resultTable').DataTable({
         "autoWidth": false,
         "columns": [
@@ -543,7 +346,7 @@ $('#resultTable').on('click', '.more-logs', async function() {
         "searchHighlight": true,
         "ordering": false,
         "language": {
-            "search": "Search for keywords in Log Windows",
+            "search": "Search in log windows",
             "searchPlaceholder": "Enter search keyword(s)",
         },
         "destroy": true,
@@ -553,6 +356,7 @@ $('#resultTable').on('click', '.more-logs', async function() {
 
     document.getElementById('loading-popup').style.display = 'none';
 });
+
 $('#resultTable').on('click', '.less-logs', function() {
     const scrollableDiv = this.parentElement;
     const logContents = scrollableDiv.querySelectorAll('.log-content');
@@ -563,38 +367,32 @@ $('#resultTable').on('click', '.less-logs', function() {
     newHTML += '<button class="more-logs">Show More Logs</button>';
     scrollableDiv.innerHTML = newHTML;
     let logNumDiv = scrollableDiv.parentElement.previousSibling.getElementsByClassName('log-num')[0];
-    logNumDiv.innerHTML = '#logs displayed: 5';
+    if (logNumDiv) logNumDiv.innerHTML = '#logs displayed: 5';
 });
-function handleCheckbox(checkbox){
-    let scrollableDiv =checkbox.parentElement.closest('tr').cells[1].querySelector('div');
-    let uniqueFlag =checkbox.closest('td').children[0].checked;
+
+function handleCheckbox(checkbox) {
+    let scrollableDiv = checkbox.parentElement.closest('tr').cells[1].querySelector('div');
+    let uniqueFlag = checkbox.closest('td').children[0].checked;
     let gsFlag = checkbox.closest('td').children[2].checked;
     document.getElementById('loading-popup').style.display = 'block';
-    loadData(scrollableDiv,uniqueFlag,gsFlag,"showLess");
-    }
+    loadData(scrollableDiv, uniqueFlag, gsFlag, "showLess");
+}
 
 function getColorForGS(gs) {
     switch (gs) {
-        case 'latency':
-            return '#B8860B';
-        case 'error':
-            return '#8B0000';
-        case 'availability':
-            return '#00008B';
-        case 'saturation':
-            return '#FF8C00';
-        case 'traffic':
-            return '#006400';
-        default:
-            return '';
+        case 'latency': return '#ec7a08';
+        case 'error': return '#c9190b';
+        case 'availability': return '#004b95';
+        case 'saturation': return '#6a4f9c';
+        case 'traffic': return '#3e8635';
+        default: return '';
     }
 }
+
 function getSignal(gs) {
     const signals = ['latency', 'error', 'availability', 'saturation', 'traffic'];
     return signals.includes(gs) ? 'gs' : 'non_gs';
 }
-
 </script>
 </body>
 </html>
-
