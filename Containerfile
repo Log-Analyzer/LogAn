@@ -1,7 +1,7 @@
 # Stage 0: grab uv binary from official uv image
 FROM ghcr.io/astral-sh/uv:latest AS uvbin
 
-# Final image: start from Red Hat UBI python image 
+# Final image: start from Red Hat UBI python image
 # More details: https://catalog.redhat.com/en/software/containers/ubi9/python-311/63f764b03f0b02a2e2d63fff#overview
 FROM registry.access.redhat.com/ubi9/python-311:9.7
 
@@ -14,16 +14,12 @@ RUN yum update -y \
       wget \
       make gcc \
       unzip \
-      python3-devel \
- && yum clean all
+      python3-devel
 
 # Copy uv binary (and helper uvx if present) from upstream image
 COPY --from=uvbin /uv /usr/local/bin/uv
 COPY --from=uvbin /uvx /usr/local/bin/uvx
 RUN chmod 755 /usr/local/bin/uv /usr/local/bin/uvx || true
-
-# Switch to non-root user
-USER 1001
 
 # Optional: verify
 RUN java -version && python3 --version && pip3 --version && uv --version
@@ -33,14 +29,28 @@ RUN java -version && python3 --version && pip3 --version && uv --version
 # ----------------------------
 WORKDIR /opt/app-root/src
 
-# Install logan dependencies
+# Install all Python deps in one layer, then remove build-only packages
 COPY --chmod=755 requirements.txt .
-RUN uv venv --python python3.11 && uv pip install -r requirements.txt
+RUN uv venv --python python3.11 \
+ && uv pip install --no-cache-dir -r requirements.txt \
+ && uv pip install --no-cache-dir \
+      torch==2.2.2+cpu \
+      --index-url https://download.pytorch.org/whl/cpu
 
 # Install logan package
 COPY --chmod=755 . .
-RUN uv pip install -e . --no-deps
+RUN uv pip install --no-cache-dir . --no-deps
 
+# Clean up build-only packages
+RUN yum remove -y make gcc python3-devel \
+ && yum clean all \
+ && rm -rf /var/cache/yum
+
+# Redirect runtime caches to /tmp so non-root user can write to them
+ENV HF_HOME="/tmp/hf_cache"
+
+# Drop to non-root user for runtime
+USER 1001
 
 #######################################
 # Environment Variable Defaults
