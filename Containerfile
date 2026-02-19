@@ -37,6 +37,10 @@ WORKDIR /opt/app-root/src
 COPY --chmod=755 requirements.txt .
 RUN uv venv --python python3.11 && uv pip install -r requirements.txt
 
+RUN uv pip install --no-cache-dir \
+    torch==2.2.2+cpu \
+    --index-url https://download.pytorch.org/whl/cpu
+
 # Install logan package
 COPY --chmod=755 . .
 RUN uv pip install -e . --no-deps
