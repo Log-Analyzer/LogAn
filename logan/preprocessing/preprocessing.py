@@ -29,7 +29,7 @@ DEFAULT_CONFIG = "config.ini"
 DEFAULT_CONFIG_SECTION = "preprocessing"
 
 # Initialize pandarallel
-pandarallel.initialize(progress_bar=True)
+pandarallel.initialize(progress_bar=True, nb_workers=min(os.cpu_count() or 2, 4))
 
 def initialize_once():
     """
