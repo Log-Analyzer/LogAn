@@ -5,8 +5,8 @@ import numpy as np
 from dateutil import parser as god_parse
 from dateutil import tz
 import pandas as pd
+import gc
 import statistics
-from pandarallel import pandarallel
 from tqdm import tqdm
 from transformers import pipeline
 from transformers.pipelines.pt_utils import KeyDataset
@@ -14,7 +14,6 @@ from datasets import Dataset
 
 from logan.log_diagnosis.models import ModelManager, AllModels, ModelType
 
-pandarallel.initialize(progress_bar=False)
 tqdm.pandas()
 np.random.seed(42)
 
@@ -155,6 +154,7 @@ class Core:
             fault_predictions.append(high_conf_labels)
 
         final_output = [fault_predictions[start:end] for start, end in index]
+        del predictions, fault_predictions, list_of_logs
 
         return final_output
 
@@ -231,8 +231,9 @@ class Core:
         predictions = self.model_manager.classify_golden_signal(list_of_logs, batch_size)
         print(f"Predictions: {predictions[0]}")
 
-        output = [pred['labels'][0] for pred in predictions]  # Get the top prediction
-        y_scores = [pred['scores'][0] for pred in predictions]  # Get the confidence score
+        output = [pred['labels'][0] for pred in predictions]
+        y_scores = [pred['scores'][0] for pred in predictions]
+        del predictions, list_of_logs
 
         final_outputs_per_rep = [output[start:end] for start, end in index]
         final_scores_per_rep = [y_scores[start:end] for start, end in index]
@@ -285,6 +286,7 @@ class Core:
         rep_lol = representative_df["preprocessed_text"].tolist()
         temp_ids = representative_df["test_ids"].tolist()
         file_names = representative_df["file_names"].tolist()
+        del representative_df
 
         # Detecting Golden Signal
         print("Detecting Golden Signal")
@@ -299,6 +301,10 @@ class Core:
         fault_list = self.get_fault(logs_for_fcp, model_fault, batch_size)
         print(f"Fault category detection completed in: {time.time() - start_time} seconds")
 
+        # Free model memory — models are no longer needed after inference
+        del self.model_manager
+        gc.collect()
+
         # Mapping test IDs to their corresponding golden signal and fault category
         temp_id_to_signal_map = {}
         fcp_idx = 0
@@ -311,15 +317,13 @@ class Core:
                 fcp_idx += 1
 
         temp_id_to_rep_log = {tid: {file_name: logs[0]} for tid, file_name, logs in zip(temp_ids, file_names, rep_lol)}
+        del rep_lol, temp_ids, file_names, gs_list, fault_list, logs_for_fcp
 
         # Backtracking GS and Fault Labels
         print("Backtracking GS and Fault Labels")
         start_time = time.time()
         apply_func = self.backprop_gs_fault_with_temp_ids
-        try:
-            df_inference_csv[['golden_signal', 'text_output']] = df_inference_csv.parallel_apply(apply_func, axis=1, mapping=temp_id_to_signal_map)
-        except:
-            df_inference_csv[['golden_signal', 'text_output']] = df_inference_csv.progress_apply(apply_func, axis=1, mapping=temp_id_to_signal_map)
+        df_inference_csv[['golden_signal', 'text_output']] = df_inference_csv.progress_apply(apply_func, axis=1, mapping=temp_id_to_signal_map)
         print(f"Backtracking completed in: {time.time() - start_time} seconds")
 
         df_inference_csv['test_ids'] = df_inference_csv['test_ids'].astype(str)
@@ -367,6 +371,8 @@ class Core:
             'golden_signal': ' '.join
         }).reset_index()
 
+        del df_inference_csv
+
         df_inference_csv_only_non_info['group'] = df_inference_csv_only_non_info['epoch'] // 30
         df_for_anomaly_html_non_info = df_inference_csv_only_non_info.groupby('group').agg({
             'test_ids': ' '.join,
@@ -376,6 +382,9 @@ class Core:
             'epoch': 'first',
             'golden_signal': " ".join
         }).reset_index()
+
+        del df_inference_csv_only_non_info
+        gc.collect()
 
         # Adding additional columns for the anomaly DataFrames
         df_for_anomaly_html['all_info'] = df_for_anomaly_html['golden_signal'].apply(lambda gs: all(item.strip() == "Info" for item in gs.split()))
