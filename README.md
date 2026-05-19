@@ -88,6 +88,8 @@ uv run logan view -d "tmp/output"
 # server should be available at http://localhost:8000/log_diagnosis
 ``` 
 
+![Log-Explorer](./docs/asset/log-explorer.png)
+
 ## MCP Server (for AI Agents)
 
 LogAn exposes its analysis capabilities via the [Model Context Protocol (MCP)](https://modelcontextprotocol.io), allowing AI agents (Claude Desktop, Claude Code, custom agents) to analyze logs programmatically.
