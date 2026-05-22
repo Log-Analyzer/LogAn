@@ -1,6 +1,22 @@
 # Stage 0: grab uv binary from official uv image
 FROM ghcr.io/astral-sh/uv:latest AS uvbin
 
+# Stage 1: build drain3-rs wheel (Rust toolchain kept out of the final image)
+FROM python:3.11-slim AS rustbuilder
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        curl build-essential git \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+RUN pip install --no-cache-dir maturin
+
+RUN pip wheel --no-cache-dir \
+        git+https://github.com/Log-Analyzer/Drain3-rs.git \
+        -w /wheels
+
 # Final image: start from Red Hat UBI python image
 # More details: https://catalog.redhat.com/en/software/containers/ubi9/python-311/63f764b03f0b02a2e2d63fff#overview
 FROM registry.access.redhat.com/ubi9/python-311:9.7
@@ -30,12 +46,16 @@ RUN java -version && python3 --version && pip3 --version && uv --version
 WORKDIR /opt/app-root/src
 
 # Install all Python deps in one layer, then remove build-only packages
+COPY --from=rustbuilder /wheels/drain3*.whl /tmp/
 COPY --chmod=755 requirements.txt .
-RUN uv venv --python python3.11 \
- && uv pip install --no-cache-dir -r requirements.txt \
+RUN grep -v "^drain3" requirements.txt > /tmp/reqs_no_drain3.txt \
+ && uv venv --python python3.11 \
+ && uv pip install --no-cache-dir /tmp/drain3*.whl \
+ && uv pip install --no-cache-dir -r /tmp/reqs_no_drain3.txt \
  && uv pip install --no-cache-dir \
       torch==2.2.2+cpu \
-      --index-url https://download.pytorch.org/whl/cpu
+      --index-url https://download.pytorch.org/whl/cpu \
+ && rm /tmp/drain3*.whl /tmp/reqs_no_drain3.txt
 
 # Install logan package
 COPY --chmod=755 . .
@@ -48,6 +68,11 @@ RUN yum remove -y make gcc python3-devel \
 
 # Redirect runtime caches to /tmp so non-root user can write to them
 ENV HF_HOME="/tmp/hf_cache"
+
+# Pre-create the Logan DuckDB WASM cache dir owned by the runtime user
+RUN mkdir -p /opt/app-root/src/.cache/logan \
+ && chown -R 1001:0 /opt/app-root/src/.cache \
+ && chmod -R g+rwx /opt/app-root/src/.cache
 
 # Drop to non-root user for runtime
 USER 1001

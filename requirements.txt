@@ -19,5 +19,5 @@ transformers==4.56.2
 openpyxl==3.1.4
 numpy==1.26.4
 setuptools==70.0.0
-drain3==0.9.11
+drain3 @ git+https://github.com/Log-Analyzer/Drain3-rs.git
 click==8.3.1
