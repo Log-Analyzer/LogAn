@@ -102,11 +102,18 @@ class LogStore:
             raise ValueError(f"DataFrame is missing columns needed by LogStore: {missing}")
 
         has_original = "original_text" in df.columns
+        has_component = "component" in df.columns
 
         # --- templates ---
+        agg_kwargs = {
+            "template": ("template_str", "first"),
+            "occurrence_count": ("test_ids", "count"),
+        }
+        if has_component:
+            agg_kwargs["component"] = ("component", "first")
         grp = (
             df.groupby("test_ids")
-            .agg(template=("template_str", "first"), occurrence_count=("test_ids", "count"))
+            .agg(**agg_kwargs)
             .reset_index()
         )
         for _, row in grp.iterrows():
@@ -122,6 +129,7 @@ class LogStore:
                 "golden_signal": None,
                 "fault_category": None,
                 "occurrence_count": int(row["occurrence_count"]),
+                "component": str(row["component"]) if has_component else None,
             }
 
         self._update_signals(temp_id_to_signal_map)

@@ -2,8 +2,16 @@
 """Setup script for Logan - Log Analysis Tool."""
 
 import os
+import re
 from setuptools import setup, find_packages
-from logan import __version__
+
+def _read_version():
+    version_file = os.path.join(os.path.dirname(__file__), "logan", "_version.py")
+    with open(version_file, "r", encoding="utf-8") as f:
+        match = re.search(r'__version__\s*=\s*["\']([^"\']+)["\']', f.read())
+        return match.group(1) if match else "0.0.1"
+
+__version__ = _read_version()
 
 
 def read_requirements(filename="requirements.txt"):

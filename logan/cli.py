@@ -158,8 +158,14 @@ def cli():
     default=False,
     help="Clean up the output directory if it already exists."
 )
-def analyze(files, glob, time_range, output_dir, debug_mode, process_all_files, process_log_files, 
-            process_txt_files, model_type, model, clean_up):
+@click.option(
+    "--component-tagging",
+    default=False,
+    envvar="LOGAN_COMPONENT_TAGGING",
+    help="Enable IDM component tagging for log lines based on Drain3 template clusters."
+)
+def analyze(files, glob, time_range, output_dir, debug_mode, process_all_files, process_log_files,
+            process_txt_files, model_type, model, clean_up, component_tagging):
     """
     Analyze log files for anomalies.
     
@@ -202,6 +208,7 @@ def analyze(files, glob, time_range, output_dir, debug_mode, process_all_files, 
     click.echo(f"  Model type: {model_type}")
     click.echo(f"  Model: {model}")
     click.echo(f"  Clean up: {clean_up}")
+    click.echo(f"  Component tagging: {component_tagging}")
     click.echo()
     
     files = list(files)
@@ -249,7 +256,15 @@ def analyze(files, glob, time_range, output_dir, debug_mode, process_all_files, 
         os.path.join(output_dir, "test_templates", "tm-test.templates.json")
     )
     click.echo(click.style("  Templates generated successfully", fg="green"))
-    
+
+    # Step 2.5: Component tagging (optional)
+    if component_tagging:
+        click.echo(click.style("\nStep 2.5: Tagging log lines by component...", fg="cyan"))
+        from logan.idm_component_tagger import ComponentTagger
+        tagger = ComponentTagger()
+        templatizer.df = tagger.tag(templatizer.df)
+        click.echo(click.style(f"  Component tagging complete. Components found: {templatizer.df['component'].unique().tolist()}", fg="green"))
+
     # Step 3: Anomaly detection
     click.echo(click.style("\nStep 3: Detecting anomalies...", fg="cyan"))
     anomaly_obj = Anomaly(debug_mode_str, model_type, model)

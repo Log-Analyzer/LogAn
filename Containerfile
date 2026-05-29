@@ -96,6 +96,9 @@ ENV LOGAN_PROCESS_TXT_FILES="false"
 # Clean up output directory before running
 ENV LOGAN_CLEAN_UP="false"
 
+# Enable IDM component tagging
+ENV LOGAN_COMPONENT_TAGGING="false"
+
 # Port for view mode HTTP server
 ENV LOGAN_VIEW_PORT="8000"
 

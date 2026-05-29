@@ -53,6 +53,10 @@ LOGAN_PROCESS_TXT_FILES="${LOGAN_PROCESS_TXT_FILES:-false}"
 # Clean up output directory before running
 LOGAN_CLEAN_UP="${LOGAN_CLEAN_UP:-false}"
 
+# Enable IDM component tagging
+LOGAN_COMPONENT_TAGGING="${LOGAN_COMPONENT_TAGGING:-false}"
+
+
 # Port for view mode HTTP server
 LOGAN_VIEW_PORT="${LOGAN_VIEW_PORT:-8000}"
 
@@ -98,6 +102,7 @@ print_config() {
     echo "  LOGAN_PROCESS_LOG_FILES: ${LOGAN_PROCESS_LOG_FILES}"
     echo "  LOGAN_PROCESS_TXT_FILES: ${LOGAN_PROCESS_TXT_FILES}"
     echo "  LOGAN_CLEAN_UP:          ${LOGAN_CLEAN_UP}"
+    echo "  LOGAN_COMPONENT_TAGGING: ${LOGAN_COMPONENT_TAGGING}"
     echo "  LOGAN_VIEW_PORT:         ${LOGAN_VIEW_PORT}"
     echo ""
 }
@@ -181,6 +186,11 @@ run_analyze() {
     # Add clean up flag
     if [ "${LOGAN_CLEAN_UP,,}" = "true" ]; then
         CMD="$CMD --clean-up"
+    fi
+
+    # Add component tagging flag
+    if [ "${LOGAN_COMPONENT_TAGGING,,}" = "true" ]; then
+        CMD="$CMD --component-tagging"
     fi
 
     echo -e "${CYAN}Executing: ${CMD}${NC}"

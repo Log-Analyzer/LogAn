@@ -346,12 +346,20 @@ class Core:
         print(df_inference_csv_only_non_info.head())
 
         # Creating Summary DataFrame
-        df_for_summary_html = df_inference_csv.groupby(['test_ids', 'file_names']).agg({
+        has_component = 'component' in df_inference_csv.columns
+        agg_dict = {
             'text': lambda x: x.iloc[0].replace("\n", "</br>"),
-            'golden_signal': ['first', 'count']
-        }).reset_index()
+            'golden_signal': ['first', 'count'],
+        }
+        if has_component:
+            agg_dict['component'] = 'first'
 
-        df_for_summary_html.columns = ['d_tid', 'file_names', 'text', 'gs', 'd_tid_count']
+        df_for_summary_html = df_inference_csv.groupby(['test_ids', 'file_names']).agg(agg_dict).reset_index()
+
+        if has_component:
+            df_for_summary_html.columns = ['d_tid', 'file_names', 'text', 'gs', 'd_tid_count', 'component']
+        else:
+            df_for_summary_html.columns = ['d_tid', 'file_names', 'text', 'gs', 'd_tid_count']
 
         total_log_lines = len(df_inference_csv)
         

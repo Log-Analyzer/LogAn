@@ -50,6 +50,8 @@
             <div class="exp-signals" id="signalList"></div>
             <div class="exp-sidebar__section">Sources</div>
             <div class="exp-sources" id="sourceList"></div>
+            <div class="exp-sidebar__section" id="componentSection" style="display:none">Component</div>
+            <div class="exp-components" id="componentList"></div>
             <div class="exp-sidebar__section">Templates</div>
             <div class="exp-tmpl-search">
                 <input id="tmplSearch" type="search" placeholder="Filter templates…" aria-label="Filter templates">
@@ -146,6 +148,10 @@
             <select id="summaryFileFilter" class="exp-summary-select">
                 <option value="">All files</option>
             </select>
+            <label for="summaryComponentFilter" id="summaryComponentFilterLabel" style="display:none">Component</label>
+            <select id="summaryComponentFilter" class="exp-summary-select" style="display:none">
+                <option value="">All components</option>
+            </select>
             <input id="summarySearch" class="exp-summary-search" type="search" placeholder="Search templates…" aria-label="Search templates">
             <span style="margin-left:auto;font-size:.78rem;color:var(--rh-black-300)" id="summaryTableCount"></span>
         </div>
@@ -157,6 +163,7 @@
                         <th>Representative log line</th>
                         <th class="col-signal">Golden Signal</th>
                         <th class="col-fault">Fault Category</th>
+                        <th class="col-component" id="colComponentHeader" style="display:none">Component</th>
                         <th class="col-count">Count</th>
                         <th class="col-coverage">Coverage</th>
                     </tr>
@@ -229,10 +236,11 @@ function tmplColor(idx) {
 }
 
 // ── Log Feed filter state ───────────────────────────────────────────────────
-let activeGS     = 'all';
-let activeTid    = null;
-let activeSource = null;
-let searchText   = '';
+let activeGS        = 'all';
+let activeTid       = null;
+let activeSource    = null;
+let activeComponent = null;
+let searchText      = '';
 let tmplSearch   = '';
 let sortMode     = 'newest';
 let currentPage  = 0;
@@ -244,9 +252,11 @@ let displayEntries = [];
 let summaryLoaded      = false;
 let summaryRows        = [];  // all template rows from DuckDB
 let totalEntriesCount  = 0;
-let summarySignalFilter = '';
-let summaryFileFilter   = '';
-let summarySearch       = '';
+let summarySignalFilter    = '';
+let summaryFileFilter      = '';
+let summaryComponentFilter = '';
+let summarySearch          = '';
+let hasComponents          = false;
 
 // Timeline state
 let timelineChart     = null;
@@ -332,9 +342,10 @@ async function initDuckDB() {
 
 function buildWhere() {
     const parts = [];
-    if (activeGS !== 'all')    parts.push(`t.golden_signal = '${sqlEsc(activeGS)}'`);
-    if (activeTid !== null)    parts.push(`e.template_id = ${activeTid}`);
-    if (activeSource !== null) parts.push(`e.file_source = '${sqlEsc(activeSource)}'`);
+    if (activeGS !== 'all')       parts.push(`t.golden_signal = '${sqlEsc(activeGS)}'`);
+    if (activeTid !== null)       parts.push(`e.template_id = ${activeTid}`);
+    if (activeSource !== null)    parts.push(`e.file_source = '${sqlEsc(activeSource)}'`);
+    if (activeComponent !== null) parts.push(`t.component = '${sqlEsc(activeComponent)}'`);
     if (searchText) {
         const q = sqlEsc(searchText);
         parts.push(`(e.original_text ILIKE '%${q}%' OR e.variables ILIKE '%${q}%')`);
@@ -489,7 +500,45 @@ function renderSourceList() {
     });
 }
 
-function renderSidebar() { renderSignalCounts(); renderTemplateList(); }
+function computeComponentCounts() {
+    const counts = {};
+    for (const t of allTemplates) {
+        const comp = t.component || null;
+        if (comp && comp !== 'None') {
+            counts[comp] = (counts[comp] || 0) + (t.occurrence_count || 0);
+        }
+    }
+    return counts;
+}
+
+function renderComponentList() {
+    const counts = computeComponentCounts();
+    const section = document.getElementById('componentSection');
+    const list = document.getElementById('componentList');
+    if (Object.keys(counts).length === 0) { section.style.display = 'none'; list.innerHTML = ''; return; }
+    section.style.display = '';
+    const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+    list.innerHTML = sorted.map(([comp, cnt]) => {
+        const active = comp === activeComponent ? ' active' : '';
+        return `<div class="exp-source-row${active}" data-comp="${esc(comp)}" role="option" tabindex="0">
+            <span class="exp-source-icon"></span>
+            <span class="exp-source-label">${esc(comp)}</span>
+            <span class="exp-signal-count">${fmt(cnt)}</span>
+        </div>`;
+    }).join('');
+    list.querySelectorAll('.exp-source-row').forEach(el => {
+        el.addEventListener('click',   () => setComponent(el.dataset.comp));
+        el.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') setComponent(el.dataset.comp); });
+    });
+}
+
+function setComponent(comp) {
+    activeComponent = (activeComponent === comp) ? null : comp;
+    renderComponentList();
+    applyFilters();
+}
+
+function renderSidebar() { renderSignalCounts(); renderComponentList(); renderTemplateList(); }
 
 function renderTemplateList() {
     const q = tmplSearch.toLowerCase();
@@ -532,9 +581,9 @@ function setSource(src) {
 }
 function selectTemplate(tid) { activeTid = (activeTid === tid) ? null : tid; renderTemplateList(); updateFilterPill(); applyFilters(); }
 function clearAllFilters() {
-    activeGS = 'all'; activeTid = null; activeSource = null; searchText = '';
+    activeGS = 'all'; activeTid = null; activeSource = null; activeComponent = null; searchText = '';
     document.getElementById('logSearch').value = '';
-    renderSidebar(); renderSourceList(); updateFilterPill(); applyFilters();
+    renderSidebar(); renderSourceList(); renderComponentList(); updateFilterPill(); applyFilters();
 }
 function updateFilterPill() {
     const pill  = document.getElementById('activeFilterPill');
@@ -776,12 +825,12 @@ function buildSummaryFromTemplates() {
         fault_category:   t.fault_category   || 'other',
         occurrence_count: t.occurrence_count || 0,
         rep_log:          t.rep_log          || t.template || '',
-        // file_sources may be absent in output generated before this field was added;
-        // fall back to allSources so the file filter still has options.
+        component:        t.component        || null,
         file_sources:     Object.keys(t.file_sources).length
             ? t.file_sources
             : Object.fromEntries(allSources.map(s => [s.file_source, 0])),
     }));
+    hasComponents = summaryRows.some(r => r.component && r.component !== 'None');
     summaryRows.sort((a, b) => {
         const aInfo = a.golden_signal === 'information' ? 1 : 0;
         const bInfo = b.golden_signal === 'information' ? 1 : 0;
@@ -789,6 +838,19 @@ function buildSummaryFromTemplates() {
         return a.occurrence_count - b.occurrence_count;
     });
     totalEntriesCount = totalEntriesCount || summaryRows.reduce((s, r) => s + r.occurrence_count, 0);
+    if (hasComponents) {
+        document.getElementById('colComponentHeader').style.display = '';
+        document.getElementById('summaryComponentFilterLabel').style.display = '';
+        const sel = document.getElementById('summaryComponentFilter');
+        sel.style.display = '';
+        const compSet = new Set(summaryRows.map(r => r.component).filter(c => c && c !== 'None'));
+        [...compSet].sort().forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c;
+            opt.textContent = c;
+            sel.appendChild(opt);
+        });
+    }
     renderSummaryTable();
     populateSummaryFileFilter();
 }
@@ -809,19 +871,22 @@ function populateSummaryFileFilter() {
 function renderSummaryTable() {
     const gsF = summarySignalFilter.toLowerCase();
     const fileF = summaryFileFilter.toLowerCase();
+    const compF = summaryComponentFilter;
     const q = summarySearch.toLowerCase();
     const visible = summaryRows.filter(r => {
         if (gsF   && r.golden_signal !== gsF)         return false;
         if (fileF && !Object.keys(r.file_sources).some(f => f.toLowerCase() === fileF)) return false;
+        if (compF && r.component !== compF)            return false;
         if (q && !r.rep_log.toLowerCase().includes(q) && !r.template.toLowerCase().includes(q)) return false;
         return true;
     });
     document.getElementById('summaryTableCount').textContent = `${fmt(visible.length)} templates`;
     const totalOcc = totalEntriesCount || 1;
     const TRUNC = 400;
+    const colSpan = hasComponents ? 7 : 6;
     const tbody = document.getElementById('summaryTableBody');
     if (!visible.length) {
-        tbody.innerHTML = '<tr><td colspan="6" class="exp-summary-empty">No templates match.</td></tr>';
+        tbody.innerHTML = `<tr><td colspan="${colSpan}" class="exp-summary-empty">No templates match.</td></tr>`;
         return;
     }
     tbody.innerHTML = visible.map((r, i) => {
@@ -837,11 +902,13 @@ function renderSummaryTable() {
             ? `<span class="exp-tmpl-badge" style="background:${lbl.color};font-size:.62rem;height:16px" title="${esc(r.template)}">${esc(lbl.label)}</span>`
             : '';
         const coverage = totalOcc ? (r.occurrence_count / totalOcc * 100).toFixed(2) + '%' : '—';
+        const compTd = hasComponents ? `<td class="col-component">${esc(r.component || 'Other')}</td>` : '';
         return `<tr data-tid="${r.template_id}" title="View logs for this template">
             <td class="col-num">${i+1}&nbsp;${tmplBadge}</td>
             <td class="col-log"><span class="exp-summary-log-text">${esc(displayTxt)}</span>${viewFull}</td>
             <td class="col-signal">${gsBadgeHtml(gs)}</td>
             <td class="col-fault">${esc(r.fault_category)}</td>
+            ${compTd}
             <td class="col-count">${fmt(r.occurrence_count)}</td>
             <td class="col-coverage">${coverage}</td>
         </tr>`;
@@ -862,6 +929,7 @@ function renderSummaryTable() {
 // Summary filter wiring
 document.getElementById('summarySignalFilter').addEventListener('change', e => { summarySignalFilter = e.target.value; renderSummaryTable(); });
 document.getElementById('summaryFileFilter').addEventListener('change',   e => { summaryFileFilter   = e.target.value; renderSummaryTable(); });
+document.getElementById('summaryComponentFilter').addEventListener('change', e => { summaryComponentFilter = e.target.value; renderSummaryTable(); });
 document.getElementById('summarySearch').addEventListener('input', e => { summarySearch = e.target.value.trim(); renderSummaryTable(); });
 
 async function activateSummaryTab() {
