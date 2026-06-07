@@ -158,27 +158,15 @@ def cli():
     default=False,
     help="Clean up the output directory if it already exists."
 )
-<<<<<<< Updated upstream
-def analyze(files, glob, time_range, output_dir, debug_mode, process_all_files, process_log_files, 
-            process_txt_files, model_type, model, clean_up):
-=======
 @click.option(
-    "--component-tagging",
-    is_flag=True,
-    default=False,
-    envvar="LOGAN_COMPONENT_TAGGING",
-    help="Enable component tagging for log lines based on Drain3 template clusters."
-)
-@click.option(
-    "--component-config",
+    "--tag-config",
     type=click.Path(exists=True),
     default=None,
-    envvar="LOGAN_COMPONENT_CONFIG",
-    help="Path to JSON file defining component names and seed keywords for component tagging."
+    envvar="LOGAN_TAG_CONFIG",
+    help="Path to JSON file defining custom tag rules with keywords and regex patterns. Enables custom tagging when provided."
 )
 def analyze(files, glob, time_range, output_dir, debug_mode, process_all_files, process_log_files,
-            process_txt_files, model_type, model, clean_up, component_tagging, component_config):
->>>>>>> Stashed changes
+            process_txt_files, model_type, model, clean_up, tag_config):
     """
     Analyze log files for anomalies.
     
@@ -264,24 +252,18 @@ def analyze(files, glob, time_range, output_dir, debug_mode, process_all_files, 
     templatizer = Templatizer(debug_mode=debug_mode_str, config_path=drain_config_path)
     templatizer.miner(preprocessing_obj.df, output_dir)
     click.echo(click.style("  Templates generated successfully", fg="green"))
-<<<<<<< Updated upstream
-    
-=======
 
-    # Step 2.5: Component tagging (optional)
-    if component_tagging:
-        click.echo(click.style("\nStep 2.5: Tagging log lines by component...", fg="cyan"))
+    # Step 2.5: Custom tagging (optional)
+    if tag_config:
+        click.echo(click.style("\nStep 2.5: Applying custom tags...", fg="cyan"))
         from logan.idm_component_tagger import ComponentTagger
         from logan.idm_component_tagger.config import load_config
-        if component_config:
-            config = load_config(component_config)
-        else:
-            config={"tags":[],"default_tag":"Other"}
+        config = load_config(tag_config)
+        click.echo(click.style(f"  Loaded {len(config['tags'])} tag rules from {tag_config}", fg="green"))
         tagger = ComponentTagger(config)
         templatizer.df = tagger.tag(templatizer.df)
-        click.echo(click.style(f"  Component tagging complete. Components found: {templatizer.df['component'].unique().tolist()}", fg="green"))
+        click.echo(click.style(f"  Tagging complete. Tags found: {templatizer.df['component'].unique().tolist()}", fg="green"))
 
->>>>>>> Stashed changes
     # Step 3: Anomaly detection
     click.echo(click.style("\nStep 3: Detecting anomalies...", fg="cyan"))
     anomaly_obj = Anomaly(debug_mode_str, model_type, model)

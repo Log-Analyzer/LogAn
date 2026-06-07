@@ -1,0 +1,25 @@
+{
+    "tags": [
+        {
+            "name": "Error",
+            "keywords": ["error", "err", "fatal", "critical"],
+            "patterns": ["\\[error\\]", "\\[crit\\]", "\\[fatal\\]", "FATAL|ERROR"]
+        },
+        {
+            "name": "Warning",
+            "keywords": ["warn", "warning"],
+            "patterns": ["\\[warn\\]", "\\[warning\\]"]
+        },
+        {
+            "name": "Authentication",
+            "keywords": ["auth", "login", "session", "pam"],
+            "patterns": ["authentication\\s+(failure|success)", "session\\s+(opened|closed)"]
+        },
+        {
+            "name": "Network",
+            "keywords": ["network", "socket", "connection"],
+            "patterns": ["connection\\s+(refused|reset|timed out)", "\\bport\\s+\\d+\\b"]
+        }
+    ],
+    "default_tag": "Other"
+}

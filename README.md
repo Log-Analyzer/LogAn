@@ -2,8 +2,7 @@
 # LogAn (Log Analyzer)
 
 **LogAn** is an intelligent log analysis tool that extracts key insights for SREs/Support Engineers/Developers, to identify and diagnose ongoing issues from logs. 
-It generates two reports: 
-(1) Summary Report presents a table of the representative log lines — each with its predicted golden signals and fault categories — along with the frequency of its occurrence. By using this approach, we've found that the tool can reduce the data volume by up to 90%, since most log lines are informational. (2) Diagnosis Report presents a chronologically ordered set of relevant log windows with user-configurable granularity (e.g., 30s, 1m).
+It generates an interactive **Log Explorer** report that presents unique log templates with their predicted golden signals and fault categories, along with occurrence counts. The explorer supports sidebar filtering, timeline visualization, template drill-down, and optional custom tagging. By clustering log lines into templates, LogAn can reduce the data volume by up to 90%, since most log lines are informational.
 
 
 ![Architecture](./docs/asset/Logan%20architecture.png)
@@ -53,6 +52,7 @@ podman run --rm \
 | `LOGAN_PROCESS_LOG_FILES` | `true` | Process `.log` files found in directories |
 | `LOGAN_PROCESS_TXT_FILES` | `false` | Process `.txt` files found in directories |
 | `LOGAN_CLEAN_UP` | `false` | Clean output directory before running |
+| `LOGAN_TAG_CONFIG` | _(none)_ | Path to custom tag config JSON file. Enables tagging when set |
 
 
 #### Build Container Image
@@ -79,6 +79,64 @@ uv run logan analyze \
     -f "examples/Linux_2k.log" \
     -o "tmp/output"
 ```
+
+
+## Custom Tags
+
+LogAn supports custom tagging of log lines using a JSON config file. Each tag rule can use **keywords** (substring match on bracket tokens) and/or **regex patterns** (matched against the full log line). This allows any team to categorize their logs by component, severity, or any custom dimension.
+
+### Usage
+
+```bash
+# CLI
+logan analyze -f server.log -o ./output --tag-config configs/example_tags.json
+
+# Container
+podman run --rm \
+    -v ./logs/:/data/input/:z \
+    -v ./output/:/data/output/:z \
+    -v ./my_tags.json:/config/tags.json:z \
+    -e LOGAN_INPUT_FILES="/data/input/" \
+    -e LOGAN_OUTPUT_DIR=/data/output/ \
+    -e LOGAN_TAG_CONFIG=/config/tags.json \
+    ghcr.io/log-analyzer/logan:latest
+```
+
+### Config Format
+
+```json
+{
+  "tags": [
+    {
+      "name": "Authentication",
+      "keywords": ["auth", "login", "pam"],
+      "patterns": ["authentication\\s+(failure|success)", "session\\s+(opened|closed)"]
+    },
+    {
+      "name": "Network",
+      "keywords": ["socket", "connection"],
+      "patterns": ["connection\\s+(refused|reset|timed out)"]
+    }
+  ],
+  "default_tag": "Other"
+}
+```
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `tags` | Yes | Array of tag rules |
+| `tags[].name` | Yes | Tag label applied to matching log lines |
+| `tags[].keywords` | No | Substring match against bracket tokens extracted from log lines (e.g., `[sshd]`, `process[PID]`) |
+| `tags[].patterns` | No | Regex patterns matched against the full log line (case-insensitive) |
+| `default_tag` | No | Tag for unmatched lines (default: `"Other"`) |
+
+Each tag is scored by the number of keyword + pattern matches. The tag with the highest score wins. See `configs/example_tags.json` for a complete example.
+
+### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `LOGAN_TAG_CONFIG` | _(none)_ | Path to custom tag config JSON file. Enables tagging when set. |
 
 
 ## How to View the Reports (Output)
