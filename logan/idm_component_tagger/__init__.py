@@ -1,0 +1,1 @@
+from logan.idm_component_tagger.tagger import ComponentTagger
