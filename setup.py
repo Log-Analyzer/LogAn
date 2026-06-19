@@ -2,8 +2,15 @@
 """Setup script for Logan - Log Analysis Tool."""
 
 import os
+import re
 from setuptools import setup, find_packages
-from logan import __version__
+
+
+def _read_version():
+    init = os.path.join(os.path.dirname(__file__), "logan", "__init__.py")
+    with open(init, "r", encoding="utf-8") as f:
+        match = re.search(r'__version__\s*=\s*["\']([^"\']+)["\']', f.read())
+    return match.group(1) if match else "0.0.0"
 
 
 def read_requirements(filename="requirements.txt"):
@@ -32,7 +39,7 @@ def read_long_description():
 
 setup(
     name="logan",
-    version=__version__,
+    version=_read_version(),
     description="Logan - Log Analysis Tool for preprocessing, templatization, and anomaly detection",
     long_description=read_long_description(),
     long_description_content_type="text/markdown",
