@@ -16,6 +16,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import patoolib
 from pandarallel import pandarallel
 import time
+import shutil
 import numpy as np
 from dateutil import parser as god_parse
 
@@ -745,6 +746,27 @@ class Preprocessing:
         alphabet_count, digit_count = self.count_alphabets_and_digits(log_without_ts)
             
         return timestamp, ts, log, preprocessed_text, digit_count, alphabet_count + digit_count + 1, len(log.split(" "))
+    
+    def _extract_archive(self, archive_path, output_dir):
+        """
+        Extracts an archive to a temp directory under the output_dir and returns the path
+        """
+        extracted_dir = os.path.join(output_dir,"extracted_archives",os.path.basename(archive_path).replace(".", "_"))
+        os.makedirs(extracted_dir, exist_ok=True)
+        patoolib.extract_archive(archive_path, outdir=extracted_dir)
+
+        for root, dirs, files in os.walk(extracted_dir):
+            for f in files:
+                nested_extracted_dir = os.path.join(root, f)
+                try:
+                    if patoolib.is_archive(nested_extracted_dir):
+                        patoolib.extract_archive(nested_extracted_dir, outdir=root)
+                        os.remove(nested_extracted_dir)
+                except Exception as e:
+                    print(f"Error extracting archive {nested_extracted_dir}: {e}")
+                    continue
+
+        return extracted_dir
 
     def preprocess(self, input_files, time_range, output_dir, process_all_files, process_log_files, process_txt_files):
         """
@@ -829,7 +851,28 @@ class Preprocessing:
 
             # Skip archives or irrelevant file types
             if patoolib.is_archive(file_):
-                ignored_list.append(file_)
+                try:
+
+                    extracted_dir=self._extract_archive(file_,output_dir)
+                    # Process extracted directory the same way as regular directory
+
+                    all_files_in_dir = [fp for fp in glob.glob(os.path.join(extracted_dir, '**'), recursive=True) if not os.path.isdir(fp)]
+                    log_files, txt_files = [], []
+                
+                    if process_all_files:
+                        files_to_process.extend(all_files_in_dir)
+                    else:
+                        if process_txt_files:
+                            txt_files = [file for file in all_files_in_dir if self.pattern_txt.match(os.path.basename(file))]
+                        if process_log_files:
+                            log_files = [file for file in all_files_in_dir if self.pattern_log.match(os.path.basename(file))]
+
+                        files_to_process.extend(log_files + txt_files)
+                        ignored_list.extend([fp for fp in all_files_in_dir if fp not in (log_files + txt_files)])
+                
+                except Exception as e:
+                    print(f"Error extracting archive {file_}: {e}")
+                    ignored_list.append(file_)
 
             # Handle directories by finding log files
             elif os.path.isdir(file_):
@@ -870,6 +913,9 @@ class Preprocessing:
 
         # Process the log files and get dataframes for logs and JSON objects
         df, df_json = self.process_files(files_to_process)
+        extract_base=os.path.join(output_dir,"extracted_archives")
+        if os.path.exists(extract_base):
+            shutil.rmtree(extract_base)
 
         # Process JSON data in parallel (return tuples, build DataFrame once — avoids per-row pd.Series overhead)
         df_json = df_json.dropna()
