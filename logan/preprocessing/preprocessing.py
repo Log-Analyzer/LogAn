@@ -20,6 +20,7 @@ import numpy as np
 from dateutil import parser as god_parse
 
 from logan.preprocessing import pyrbras
+from logan.preprocessing.file_utils import count_file_line_whitespaces
 
 # Global variables
 rbr = None
@@ -299,6 +300,7 @@ class Preprocessing:
         file_names_json = []
         total_size_bytes = 0
         num_log_lines_total = 0
+        num_log_lines_whitespaces = 0
 
         max_workers = min(len(file_list), os.cpu_count() or 4, 16)
 
@@ -308,6 +310,7 @@ class Preprocessing:
                 file, size, line_count, multiline_logs, json_logs = future.result()
                 total_size_bytes += size
                 num_log_lines_total += line_count
+                num_log_lines_whitespaces += count_file_line_whitespaces(file)
 
                 logs.extend(multiline_logs)
                 json_logs_list.extend(json_logs)
@@ -318,6 +321,7 @@ class Preprocessing:
         self._file_stats = {
             'total_size_bytes': total_size_bytes,
             'num_log_lines_total': num_log_lines_total,
+            'num_log_lines_whitespaces': num_log_lines_whitespaces,
         }
 
         multiline_df = pd.DataFrame({"text": logs, "file_names": file_names_multiline})
@@ -976,7 +980,7 @@ class Preprocessing:
 
         # Calculate the ratio of numeric to total counts and filter based on threshold
         df['ratio'] = df['numeric_count'] / df['total_count']
-        df = df[df["ratio"] < 0.5]
+        df = df[df["ratio"] < 0.65]
         df = df.drop(columns=["ratio"])
 
         # Determine the maximum epoch value and adjust timestamps
