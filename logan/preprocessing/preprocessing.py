@@ -924,6 +924,17 @@ class Preprocessing:
             elif os.path.isdir(file_):
                 all_files_in_dir = [fp for fp in glob.glob(os.path.join(file_, '**'), recursive=True) if not os.path.isdir(fp)]
 
+                # Extract any archives found inside the directory
+                for af in list(all_files_in_dir):
+                    try:
+                        if patoolib.is_archive(af):
+                            all_files_in_dir.remove(af)
+                            extracted_dir = self._extract_archive(af, output_dir)
+                            extracted_files = [fp for fp in glob.glob(os.path.join(extracted_dir, '**'), recursive=True) if not os.path.isdir(fp)]
+                            all_files_in_dir.extend(extracted_files)
+                    except Exception as e:
+                        print(f"Error extracting archive {af}: {e}")
+
                 log_files, txt_files = [], []
                 if process_all_files:
                     files_to_process.extend(all_files_in_dir)
