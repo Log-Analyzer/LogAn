@@ -813,6 +813,44 @@ class Preprocessing:
                         continue
 
         return extracted_dir
+    def auto_detect_json_schema(self, df_json):
+        """
+        Auto detects the schema of the json objects in the dataframe
+        """
+        if self.is_json_present == "true":
+            return
+        known_time_candidates = ['ts', 'timestamp', 'time', 'date', 'datetime','@timestamp','timeMillis','asctime']
+        known_message_candidates = ['msg', 'message', 'log', 'log_message', 'log_entry','text']
+
+        sample=df_json['text'].head(10).tolist()
+        if not sample:
+            return 
+        
+        all_keys = set()
+        for json_obj in sample:
+            if isinstance(json_obj, dict):
+                all_keys.update(json_obj.keys())
+        detected_time=None
+        detected_msg=None
+
+        for candidate in known_time_candidates:
+            if candidate in all_keys:
+                sample_val=sample[0].get(candidate)
+                if isinstance(sample_val, str) and len(sample_val.strip()) > 0:
+                    ts_result,_=self.timestamp_json_csv_to_epoch(sample_val)
+                    if ts_result is not None:
+                        detected_time=candidate
+                        break
+        for candidate in known_message_candidates:
+            if candidate in all_keys:
+                sample_val=sample[0].get(candidate)
+                if isinstance(sample_val, str) and len(sample_val.strip()) > 0:
+                    detected_msg=candidate
+                    break
+        if detected_time and detected_msg:
+            self.json_time_field=[detected_time]
+            self.json_message_field=[detected_msg]
+            print(f"Auto detected json schema: time field: {detected_time}, message field: {detected_msg}")
 
     def preprocess(self, input_files, time_range, output_dir, process_all_files, process_log_files, process_txt_files):
         """
@@ -973,6 +1011,8 @@ class Preprocessing:
         extract_base=os.path.join(output_dir,"extracted_archives")
         if os.path.exists(extract_base):
             shutil.rmtree(extract_base)
+
+        self.auto_detect_json_schema(df_json)
 
         # Process JSON data in parallel (return tuples, build DataFrame once — avoids per-row pd.Series overhead)
         df_json = df_json.dropna()
