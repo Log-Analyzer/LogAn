@@ -66,6 +66,7 @@ class Preprocessing:
         self.df = None
 
         self.debug_mode = debug_mode
+        self._quiet = quiet
         self._print = (lambda *a, **k: None) if quiet else print
         self.pattern_txt = re.compile(r'^.+\.txt(\.-)?\d*$')
         self.pattern_log = re.compile(r'^.+\.log(\.-)?\d*$')
@@ -1016,231 +1017,14 @@ class Preprocessing:
 
         self.auto_detect_json_schema(df_json)
 
-        # Process JSON data in parallel (return tuples, build DataFrame once — avoids per-row pd.Series overhead)
-        df_json = df_json.dropna()
-        if len(df_json) > 0:
-            _ensure_pandarallel()
-            apply_fn = df_json['text'].apply if _pandarallel_disabled else df_json['text'].parallel_apply
-            json_results = apply_fn(lambda json_obj: self.process_fn_json(json_obj))
-            json_result_df = pd.DataFrame(
-                json_results.tolist(),
-                columns=['timestamps', 'epoch', 'text', 'preprocessed_text', 'numeric_count', 'total_count', 'token_count', 'discarded'],
-                index=df_json.index,
-            )
-            df_json[['timestamps', 'epoch', 'text', 'preprocessed_text', 'numeric_count', 'total_count', 'token_count', 'discarded']] = json_result_df
-        else:
-            df_json = pd.DataFrame({
-                'timestamps': [],
-                'epoch': [],
-                'text': [],
-                'preprocessed_text': [],
-                'numeric_count': [],
-                'total_count': [],
-                'token_count': [],
-                'discarded': []
-            })
+        self._run_pipeline(df, df_json, output_dir, time_range, start_time)
 
-        if (self.debug_mode == "true"):
-            df_json_discarded = df_json[df_json["discarded"] == True]
-            df_json_discarded = df_json_discarded['text'] # Extract discarded JSON objects
-            with open(os.path.join(output_dir, "developer_debug_files", "json_discarded.log"), 'w') as log_file:
-                for line in df_json_discarded:
-                    log_file.write(f"{line}\n")  # Write each line of the 'text' column to the log file
-        df_json = df_json[df_json["discarded"] == False]
-        df_json = df_json.drop(columns=["discarded"])
+    def _run_pipeline(self, df, df_json, output_dir, time_range, start_time):
+        """Shared processing pipeline used by both preprocess() and process_direct().
 
-        self._print(f"Debug mode is set to: {self.debug_mode}")
-
-        # Detect dominant timestamp patterns from a sample and reorder for fast matching
-        if len(df) > 0:
-            sample_size = min(200, len(df))
-            sample_indices = np.linspace(0, len(df) - 1, sample_size, dtype=int)
-            self._reorder_patterns_by_frequency(df['text'].iloc[sample_indices].tolist())
-
-        # Process multiline log data in parallel (return tuples, build DataFrame once — avoids per-row pd.Series overhead)
-        self._print("Starting pandarallel for log processing")
-        if len(df) > 0:
-            _ensure_pandarallel()
-            apply_fn = df['text'].apply if _pandarallel_disabled else df['text'].parallel_apply
-            log_results = apply_fn(lambda log: self.process_fn(log, self.timezone_dict, self.master_timestamp_list, self.master_format_list))
-            log_result_df = pd.DataFrame(
-                log_results.tolist(),
-                columns=['timestamps', 'epoch', 'text', 'preprocessed_text', 'numeric_count', 'total_count', 'token_count'],
-                index=df.index,
-            )
-            df[['timestamps', 'epoch', 'text', 'preprocessed_text', 'numeric_count', 'total_count', 'token_count']] = log_result_df
-        else:
-            df = pd.DataFrame({
-                'file_names': [],
-                'timestamps': [],
-                'epoch': [],
-                'text': [],
-                'preprocessed_text': [],
-                'numeric_count': [],
-                'total_count': [],
-                'token_count': [],
-            })
-
-        if (self.debug_mode == "true"):
-            df_none_logs = df[df["epoch"].isna()]  # Filter rows where 'epoch' is None (or NaN)
-            text_column = df_none_logs['text']  # Extract the 'text' column
-            # Write the 'text' column to the .log file
-            with open(os.path.join(output_dir, "developer_debug_files", "none_logs.log"), 'w') as log_file:
-                for line in text_column:
-                    log_file.write(f"{line}\n")  # Write each line of the 'text' column to the log file
-        
-        # Filter out logs of files which doesn't contains any timestamps. THE SPECIAL CASE :)!
-        df_groups_all_none = df.groupby("file_names").filter(lambda x: x['epoch'].isna().all())
-
-        # Group logs by file names and epoch timestamps
-        df["group"] = df.groupby("file_names")["epoch"].transform(lambda x: (~x.isna()).cumsum())
-
-        # Keep only valid logs (where epoch is not None)
-        df = df.loc[~df.index.isin(df_groups_all_none.index)]
-
-        # Aggregate logs based on file names and group number
-        df = df.groupby(["file_names", "group"]).agg({
-            "text": "\n".join,
-            "preprocessed_text": "\n".join,
-            "epoch": "first",
-            "timestamps": "first",
-            "numeric_count": "sum",
-            "total_count": "sum",
-            "token_count": "sum"
-        }).reset_index()
-
-        df = df.drop(columns=["group"])
-
-        # Combine processed logs and JSON data
-        df = pd.concat([df, df_json], axis=0, ignore_index=True)
-
-        if len(df) == 0:
-            self.df = df
-            self._print("PREPROCESSING ERROR: No log lines extracted from the input.")
-            return
-
-        # Calculate the ratio of numeric to total counts and filter based on threshold
-        df['ratio'] = df['numeric_count'] / df['total_count']
-        df = df[df["ratio"] < 0.65]
-        df = df.drop(columns=["ratio"])
-
-        # Determine the maximum epoch value and adjust timestamps
-        max_epoch = df['epoch'].max()
-        if math.isnan(max_epoch):
-            max_epoch = datetime.now().timestamp()
-
-        timestr = datetime.fromtimestamp(max_epoch).strftime('%Y-%m-%d %H:%M:%S')
-        df_groups_all_none["epoch"] = [max_epoch]*len(df_groups_all_none)
-        df_groups_all_none["timestamps"] = [timestr]*len(df_groups_all_none)
-
-        df = pd.concat([df, df_groups_all_none], ignore_index=True)
-
-        # Apply time range filtering if needed
-        self._print(f"Time range provided by user: {time_range}")
-        delta = self.get_time_delta(time_range)
-        if time_range != "all-data":
-            min_epoch = max_epoch - delta
-            df = df[(df['epoch'] >= min_epoch) & (df['epoch'] <= max_epoch)]
-
-        try:
-            min_epoch = df['epoch'].min()
-            min_readable = datetime.utcfromtimestamp(min_epoch).strftime('%Y-%m-%d %H:%M:%S')
-        except:
-            self._print(f"Provided data doesn't contain valid min date or the date parsing has failed!")
-
-        max_readable = datetime.utcfromtimestamp(max_epoch).strftime('%Y-%m-%d %H:%M:%S')
-
-        mean = df['token_count'].mean()
-        std_dev = df['token_count'].std()
-
-        if np.isnan(std_dev) or std_dev == 0:
-            # No variability -> No need for z-score truncation
-            df['z_score'] = 0
-            df['truncated_token_count'] = df['token_count']
-            df['truncated_log'] = df['text']
-        else:
-            z_threshold = self.z_threshold
-            upper_bound = int(mean + z_threshold * std_dev)
-
-            df['z_score'] = (df['token_count'] - mean) / std_dev
-            df['truncated_token_count'] = np.where(df['z_score'] > z_threshold, upper_bound, df['token_count'])
-            df['truncated_log'] = np.where(
-                df['token_count'] > upper_bound,
-                df['text'].str[:upper_bound],
-                df['text'],
-            )
-
-
-        # # Plot histograms of original and truncated token counts
-        # plt.figure(figsize=(14, 7))
-
-        # # Original token_count distribution (Log-Log Scale)
-        # plt.subplot(1, 2, 1)
-        # plt.hist(df['token_count'], bins=50, color='blue', alpha=0.7, label='Original')
-        # plt.axvline(upper_bound, color='red', linestyle='dashed', linewidth=2, label=f'Upper Bound (Z={z_threshold})')
-        # plt.title('Original Token Count Distribution (Log-Log Scale)')
-        # plt.xlabel('Token Count')
-        # plt.ylabel('Frequency')
-        # plt.xscale('log')
-        # plt.legend()
-
-        num_truncated = (df['token_count'] != df['truncated_token_count']).sum()
-        # Log the number of truncated logs
-        self._print(f"Number of logs affected by truncation: {num_truncated}")
-
-        # Annotate the percentage of truncated logs
-        # total_logs = len(df)
-        # truncated_percentage = (num_truncated / total_logs) * 100
-        # plt.text(0.05, 0.95, f'Truncated Logs: {truncated_percentage:.2f}%', 
-        #         transform=plt.gca().transAxes, fontsize=12, 
-        #         verticalalignment='top', bbox=dict(facecolor='white', alpha=0.5))
-
-        # # Truncated token_count distribution
-        # plt.subplot(1, 2, 2)
-        # plt.hist(df['truncated_token_count'], bins=50, color='green', alpha=0.7, label='Truncated')
-        # plt.title('Truncated Token Count Distribution')
-        # plt.xlabel('Token Count')
-        # plt.ylabel('Frequency')
-        # plt.legend()
-
-        # plt.tight_layout()
-        # plt.savefig(f"{output_dir}/fig.png")
-
-
-        # Clean up the final DataFrame
-        df = df.drop(columns=["total_count", "numeric_count", "token_count", "truncated_token_count", "z_score"])
-        df = df.dropna()
-
-        self._print("Total log lines:", len(df))
-        self._print("Min epoch (human-readable):", min_readable)
-        self._print("Max epoch (human-readable):", max_readable)
-
-        # Save preprocessing statistics using pre-collected file stats from process_files
-        self.compute_preprocessing_statistics(
-            len(df), 
-            (time.time() - start_time) * 1000, 
-            output_dir,
-            self._file_stats
-        )
-        self.df = df  # Store the final processed logs DataFrame in the class instance.
-        if (self.debug_mode == "true"):
-            df.to_csv(os.path.join(output_dir, "developer_debug_files", "processed_logs.csv"), index=False, quoting=csv.QUOTE_NONE, quotechar='',escapechar='\\')
-
-    def process_direct(self, file_list, output_dir, time_range="all-data"):
-        """Process a pre-filtered list of files, skipping file discovery.
-
-        Use this when the caller has already discovered and filtered files.
-        Runs: process_files → timestamp extraction → z-score truncation → self.df.
+        Runs: JSON processing → timestamp extraction → grouping → ratio filter →
+              time range filter → z-score truncation → stats → self.df.
         """
-        start_time = time.time()
-
-        os.makedirs(os.path.join(output_dir, "developer_debug_files"), exist_ok=True)
-        os.makedirs(os.path.join(output_dir, "metrics"), exist_ok=True)
-
-        show_progress = self._print is print
-        df, df_json = self.process_files(file_list, show_progress=show_progress)
-
-        # --- JSON processing (same as preprocess) ---
         df_json = df_json.dropna()
         if len(df_json) > 0:
             _ensure_pandarallel()
@@ -1255,7 +1039,7 @@ class Preprocessing:
         else:
             df_json = pd.DataFrame({
                 'timestamps': [], 'epoch': [], 'text': [], 'preprocessed_text': [],
-                'numeric_count': [], 'total_count': [], 'token_count': [], 'discarded': []
+                'numeric_count': [], 'total_count': [], 'token_count': [], 'discarded': [],
             })
 
         if self.debug_mode == "true":
@@ -1266,12 +1050,15 @@ class Preprocessing:
         df_json = df_json[df_json["discarded"] == False]
         df_json = df_json.drop(columns=["discarded"])
 
-        # --- Multiline log processing ---
+        self._print(f"Debug mode is set to: {self.debug_mode}")
+
         if len(df) > 0:
             sample_size = min(200, len(df))
             sample_indices = np.linspace(0, len(df) - 1, sample_size, dtype=int)
             self._reorder_patterns_by_frequency(df['text'].iloc[sample_indices].tolist())
 
+        self._print("Starting pandarallel for log processing")
+        if len(df) > 0:
             _ensure_pandarallel()
             apply_fn = df['text'].apply if _pandarallel_disabled else df['text'].parallel_apply
             log_results = apply_fn(lambda log: self.process_fn(log, self.timezone_dict, self.master_timestamp_list, self.master_format_list))
@@ -1293,7 +1080,6 @@ class Preprocessing:
                 for line in df_none_logs['text']:
                     log_file.write(f"{line}\n")
 
-        # --- Timestamp grouping & aggregation ---
         df_groups_all_none = df.groupby("file_names").filter(lambda x: x['epoch'].isna().all())
         df["group"] = df.groupby("file_names")["epoch"].transform(lambda x: (~x.isna()).cumsum())
         df = df.loc[~df.index.isin(df_groups_all_none.index)]
@@ -1301,7 +1087,7 @@ class Preprocessing:
         df = df.groupby(["file_names", "group"]).agg({
             "text": "\n".join, "preprocessed_text": "\n".join,
             "epoch": "first", "timestamps": "first",
-            "numeric_count": "sum", "total_count": "sum", "token_count": "sum"
+            "numeric_count": "sum", "total_count": "sum", "token_count": "sum",
         }).reset_index()
         df = df.drop(columns=["group"])
 
@@ -1313,7 +1099,7 @@ class Preprocessing:
             return
 
         df['ratio'] = df['numeric_count'] / df['total_count']
-        df = df[df["ratio"] < 0.5]
+        df = df[df["ratio"] < 0.65]
         df = df.drop(columns=["ratio"])
 
         max_epoch = df['epoch'].max()
@@ -1325,6 +1111,7 @@ class Preprocessing:
         df_groups_all_none["timestamps"] = [timestr] * len(df_groups_all_none)
         df = pd.concat([df, df_groups_all_none], ignore_index=True)
 
+        self._print(f"Time range provided by user: {time_range}")
         delta = self.get_time_delta(time_range)
         if time_range != "all-data":
             min_epoch = max_epoch - delta
@@ -1338,7 +1125,6 @@ class Preprocessing:
 
         max_readable = datetime.utcfromtimestamp(max_epoch).strftime('%Y-%m-%d %H:%M:%S')
 
-        # --- Z-score truncation ---
         mean = df['token_count'].mean()
         std_dev = df['token_count'].std()
 
@@ -1355,12 +1141,34 @@ class Preprocessing:
                 df['token_count'] > upper_bound, df['text'].str[:upper_bound], df['text'],
             )
 
+        num_truncated = (df['token_count'] != df['truncated_token_count']).sum()
+        self._print(f"Number of logs affected by truncation: {num_truncated}")
+
         df = df.drop(columns=["total_count", "numeric_count", "token_count", "truncated_token_count", "z_score"])
         df = df.dropna()
 
         self._print("Total log lines:", len(df))
+        self._print("Min epoch (human-readable):", min_readable)
+        self._print("Max epoch (human-readable):", max_readable)
 
         self.compute_preprocessing_statistics(
-            len(df), (time.time() - start_time) * 1000, output_dir, self._file_stats
+            len(df), (time.time() - start_time) * 1000, output_dir, self._file_stats,
         )
         self.df = df
+        if self.debug_mode == "true":
+            df.to_csv(os.path.join(output_dir, "developer_debug_files", "processed_logs.csv"), index=False, quoting=csv.QUOTE_NONE, quotechar='', escapechar='\\')
+
+    def process_direct(self, file_list, output_dir, time_range="all-data"):
+        """Process a pre-filtered list of files, skipping file discovery.
+
+        Use this when the caller has already discovered and filtered files.
+        Runs: process_files → _run_pipeline → self.df.
+        """
+        start_time = time.time()
+
+        os.makedirs(os.path.join(output_dir, "developer_debug_files"), exist_ok=True)
+        os.makedirs(os.path.join(output_dir, "metrics"), exist_ok=True)
+
+        df, df_json = self.process_files(file_list, show_progress=not self._quiet)
+
+        self._run_pipeline(df, df_json, output_dir, time_range, start_time)

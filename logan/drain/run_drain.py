@@ -118,8 +118,9 @@ class Templatizer:
                 result = template_miner_temporary.add_log_message(log)
                 line_to_result[log] = (result['cluster_id'], result.get('template_mined', ''))
 
-            df["test_ids"] = df["truncated_log"].map(lambda x: line_to_result[x][0])
-            df["template_str"] = df["truncated_log"].map(lambda x: line_to_result[x][1])
+            df[["test_ids", "template_str"]] = pd.DataFrame(
+                df["truncated_log"].map(line_to_result).tolist(), index=df.index
+            )
 
             # Extract variables in parallel — embarrassingly parallel, independent of drain order
             _ensure_pandarallel()
