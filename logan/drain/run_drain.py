@@ -3,6 +3,7 @@ import sys
 import os
 import json
 import time
+import pandas as pd
 from drain3.template_miner import TemplateMiner
 from drain3.template_miner_config import TemplateMinerConfig
 from pandarallel import pandarallel
@@ -109,16 +110,18 @@ class Templatizer:
         # Initialize a dictionary to store the loglines grouped by template IDs
         template_log_dict = {}
 
-        # Mine templates by iterating directly over the column (avoids pd.Series overhead of df.apply)
+        # Mine templates on unique lines only, then map back to all rows.
+        # Drain3 is serial (stateful prefix tree) — dedup avoids redundant tree walks.
         try:
-            test_ids = []
-            template_strs = []
-            for log in df["truncated_log"].values:
+            unique_lines = df["truncated_log"].unique()
+            line_to_result = {}
+            for log in unique_lines:
                 result = template_miner_temporary.add_log_message(log)
-                test_ids.append(result['cluster_id'])
-                template_strs.append(result.get('template_mined', ''))
-            df["test_ids"] = test_ids
-            df["template_str"] = template_strs
+                line_to_result[log] = (result['cluster_id'], result.get('template_mined', ''))
+
+            df[["test_ids", "template_str"]] = pd.DataFrame(
+                df["truncated_log"].map(line_to_result).tolist(), index=df.index
+            )
 
             # Extract variables in parallel — embarrassingly parallel, independent of drain order
             _ensure_pandarallel()
