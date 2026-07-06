@@ -3,6 +3,7 @@ import sys
 import os
 import json
 import time
+import pandas as pd
 from drain3.template_miner import TemplateMiner
 from drain3.template_miner_config import TemplateMinerConfig
 from pandarallel import pandarallel
